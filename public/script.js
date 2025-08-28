@@ -7,6 +7,7 @@ let taskToDelete = null;
 document.addEventListener('DOMContentLoaded', function() {
     loadTasks();
     setupEventListeners();
+    loadSettings();
 });
 
 // 设置事件监听器
@@ -74,6 +75,9 @@ function createTaskCard(task) {
                 <div class="task-header">
                     <h6 class="task-title">${escapeHtml(task.title)}</h6>
                     <div class="task-actions">
+                        <button class="btn btn-outline-info btn-sm" onclick="pushToWebhook('${task.id}')" title="推送到WebHook">
+                            <i class="bi bi-send"></i>
+                        </button>
                         <button class="btn btn-outline-primary btn-sm" onclick="editTask('${task.id}')" title="编辑">
                             <i class="bi bi-pencil"></i>
                         </button>
@@ -466,4 +470,141 @@ function showToast(message, type = 'info') {
     toastElement.addEventListener('hidden.bs.toast', function() {
         toastElement.remove();
     });
+}
+
+// 加载设置
+function loadSettings() {
+    const webhookUrl = localStorage.getItem('globalWebhookUrl');
+    if (webhookUrl) {
+        document.getElementById('globalWebhookUrl').value = webhookUrl;
+    }
+}
+
+// 保存设置
+function saveSettings() {
+    const webhookUrl = document.getElementById('globalWebhookUrl').value.trim();
+
+    // 验证URL格式（如果不为空）
+    if (webhookUrl) {
+        try {
+            new URL(webhookUrl);
+        } catch (e) {
+            showError('请输入有效的WebHook URL');
+            return;
+        }
+    }
+
+    // 保存到localStorage
+    localStorage.setItem('globalWebhookUrl', webhookUrl);
+
+    // 关闭模态框
+    const modal = bootstrap.Modal.getInstance(document.getElementById('settingsModal'));
+    modal.hide();
+
+    showSuccess('设置保存成功');
+}
+
+// WebHook推送功能
+function pushToWebhook(taskId) {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) {
+        showError('任务未找到');
+        return;
+    }
+
+    // 检查是否配置了WebHook地址
+    const webhookUrl = localStorage.getItem('globalWebhookUrl');
+    if (!webhookUrl) {
+        showError('请先在设置中配置WebHook地址');
+        return;
+    }
+
+    // 设置任务ID（用于确认推送时使用）
+    window.currentPushTaskId = taskId;
+
+    // 显示WebHook地址
+    document.getElementById('confirmWebhookUrl').textContent = webhookUrl;
+
+    // 生成预览内容
+    updateWebhookPreview(task);
+
+    // 显示确认模态框
+    const modal = new bootstrap.Modal(document.getElementById('webhookConfirmModal'));
+    modal.show();
+}
+
+// 更新WebHook预览内容
+function updateWebhookPreview(task) {
+    const statusMap = {
+        'pending': '⏳ 待处理',
+        'in-progress': '🔄 进行中',
+        'completed': '✅ 已完成'
+    };
+
+    const priorityMap = {
+        'high': '🔴 高',
+        'medium': '🟡 中',
+        'low': '🟢 低'
+    };
+
+    const previewContent = `
+        <strong>📋 任务推送通知</strong><br><br>
+        <strong>任务标题：</strong> ${escapeHtml(task.title)}<br>
+        <strong>任务描述：</strong> ${escapeHtml(task.description) || '无'}<br>
+        <strong>任务状态：</strong> ${statusMap[task.status] || task.status}<br>
+        <strong>优先级：</strong> ${priorityMap[task.priority] || task.priority}<br>
+        <strong>截止日期：</strong> ${task.dueDate || '未设置'}<br>
+        <strong>创建时间：</strong> ${formatDate(task.createdAt)}<br>
+        ${task.updatedAt ? `<strong>更新时间：</strong> ${formatDate(task.updatedAt)}<br>` : ''}
+        <hr>
+        <em>来自工作任务计划表系统</em>
+    `;
+
+    document.getElementById('webhookPreview').innerHTML = previewContent;
+}
+
+// 确认WebHook推送
+async function confirmWebhookPush() {
+    const taskId = window.currentPushTaskId;
+    const webhookUrl = localStorage.getItem('globalWebhookUrl');
+
+    if (!taskId) {
+        showError('任务ID丢失，请重新操作');
+        return;
+    }
+
+    if (!webhookUrl) {
+        showError('WebHook地址未配置');
+        return;
+    }
+
+    try {
+        // 发送推送请求
+        const response = await fetch(`/api/tasks/${taskId}/webhook`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ webhookUrl })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+            // 关闭模态框
+            const modal = bootstrap.Modal.getInstance(document.getElementById('webhookConfirmModal'));
+            modal.hide();
+
+            showSuccess('任务推送成功！');
+        } else {
+            throw new Error(result.error || '推送失败');
+        }
+
+    } catch (error) {
+        console.error('WebHook推送失败:', error);
+        showError('推送失败: ' + error.message);
+    } finally {
+        // 清理临时变量
+        window.currentPushTaskId = null;
+    }
 }

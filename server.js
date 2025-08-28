@@ -109,6 +109,84 @@ app.delete('/api/tasks/:id', async (req, res) => {
   }
 });
 
+// WebHook推送任务
+app.post('/api/tasks/:id/webhook', async (req, res) => {
+  const { id } = req.params;
+  const { webhookUrl } = req.body;
+
+  if (!webhookUrl) {
+    return res.status(400).json({ error: 'WebHook URL不能为空' });
+  }
+
+  try {
+    // 获取任务信息
+    const task = await TaskDB.getTaskById(id);
+    if (!task) {
+      return res.status(404).json({ error: '任务未找到' });
+    }
+
+    // 构建Markdown内容
+    const statusMap = {
+      'pending': '⏳ 待处理',
+      'in-progress': '🔄 进行中',
+      'completed': '✅ 已完成'
+    };
+
+    const priorityMap = {
+      'high': '🔴 高',
+      'medium': '🟡 中',
+      'low': '🟢 低'
+    };
+
+    const markdownContent = `## 📋 任务推送通知
+
+**任务标题：** ${task.title}
+
+**任务描述：** ${task.description || '无'}
+
+**任务状态：** ${statusMap[task.status] || task.status}
+
+**优先级：** ${priorityMap[task.priority] || task.priority}
+
+**截止日期：** ${task.dueDate || '未设置'}
+
+**创建时间：** ${new Date(task.createdAt).toLocaleString('zh-CN')}
+
+${task.updatedAt ? `**更新时间：** ${new Date(task.updatedAt).toLocaleString('zh-CN')}` : ''}
+
+---
+*来自工作任务计划表系统*`;
+
+    // 构建WebHook JSON
+    const webhookData = {
+      "msgtype": "markdown",
+      "markdown": {
+        "content": markdownContent
+      }
+    };
+
+    // 发送WebHook请求
+    const fetch = require('node-fetch');
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(webhookData)
+    });
+
+    if (response.ok) {
+      res.json({ success: true, message: '任务推送成功' });
+    } else {
+      throw new Error(`WebHook请求失败: ${response.status}`);
+    }
+
+  } catch (error) {
+    console.error('WebHook推送失败:', error);
+    res.status(500).json({ error: 'WebHook推送失败: ' + error.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`服务器运行在 http://localhost:${PORT}`);
 });

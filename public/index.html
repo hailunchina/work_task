@@ -19,10 +19,16 @@
                     <i class="bi bi-calendar-check me-2"></i>
                     工作任务计划表
                 </a>
-                <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#taskModal" onclick="openAddModal()">
-                    <i class="bi bi-plus-circle me-1"></i>
-                    添加任务
-                </button>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#taskModal" onclick="openAddModal()">
+                        <i class="bi bi-plus-circle me-1"></i>
+                        添加任务
+                    </button>
+                    <button class="btn btn-outline-light" data-bs-toggle="modal" data-bs-target="#settingsModal" title="设置">
+                        <i class="bi bi-gear me-1"></i>
+                        WebHook设置
+                    </button>
+                </div>
             </div>
         </nav>
 
@@ -203,6 +209,92 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
                     <button type="button" class="btn btn-danger" onclick="confirmDelete()">删除</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设置模态框 -->
+    <div class="modal fade" id="settingsModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-gear me-2"></i>WebHook设置
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="settingsForm">
+                        <div class="mb-3">
+                            <label for="globalWebhookUrl" class="form-label">
+                                <i class="bi bi-link-45deg me-1"></i>WebHook URL
+                            </label>
+                            <input type="url" class="form-control" id="globalWebhookUrl"
+                                   placeholder="https://your-webhook-url.com/api/webhook">
+                            <div class="form-text">
+                                配置全局WebHook地址，用于推送任务通知到企业微信、钉钉等平台
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <i class="bi bi-info-circle me-1"></i>使用说明
+                            </label>
+                            <div class="alert alert-info">
+                                <small>
+                                    <strong>企业微信：</strong>在群聊中添加机器人，复制WebHook地址<br>
+                                    <strong>钉钉：</strong>在群设置中添加自定义机器人，复制WebHook地址<br>
+                                    <strong>飞书：</strong>在群聊中添加机器人，复制WebHook地址
+                                </small>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveSettings()">
+                        <i class="bi bi-check me-1"></i>保存设置
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- WebHook推送确认模态框 -->
+    <div class="modal fade" id="webhookConfirmModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-send me-2"></i>确认推送任务
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="bi bi-link-45deg me-1"></i>推送地址
+                        </label>
+                        <div class="form-control-plaintext" id="confirmWebhookUrl">
+                            未配置WebHook地址
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="bi bi-eye me-1"></i>推送内容预览
+                        </label>
+                        <div class="border rounded p-3 bg-light">
+                            <div id="webhookPreview" class="text-muted">
+                                加载中...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="confirmWebhookPush()">
+                        <i class="bi bi-send me-1"></i>确认推送
+                    </button>
                 </div>
             </div>
         </div>

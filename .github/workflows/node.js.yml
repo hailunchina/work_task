@@ -1,0 +1,31 @@
+# 该工作流将进行节点依赖的干净安装，缓存/恢复它们，构建源代码，并在不同版本的节点上运行测试
+# 有关更多信息，请参见：https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs
+
+名称：Node.js CI
+
+在上
+  推:
+    分支：[ "master" ]
+  拉取请求:
+    分支：[ "master" ]
+
+工作:
+  构建:
+
+    运行于：ubuntu-latest
+
+    策略:
+      矩阵:
+        节点版本：[18.x， 20.x， 22.x]
+        # 查看支持的 Node.js 发行计划，请访问 https://nodejs.org/en/about/releases/
+
+    步骤:
+    - 用途：actions/checkout@v4
+    - name: 使用 Node.js ${{ matrix.node-version }}
+      使用：actions/setup-node@v4
+      与：
+        node-version： ${{ matrix.node-version }}
+        缓存: 'npm'
+    - 运行：npm ci
+    - 运行：npm run build --if-present
+    - 运行：npm testftp:

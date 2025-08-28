@@ -1,8 +1,8 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
-// 数据库文件路径
-const dbPath = path.join(__dirname, 'tasks.db');
+// 数据库文件路径 - 使用当前工作目录以支持可执行文件
+const dbPath = path.join(process.cwd(), 'tasks.db');
 
 // 创建数据库连接
 const db = new sqlite3.Database(dbPath, (err) => {

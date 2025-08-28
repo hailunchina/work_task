@@ -1,0 +1,374 @@
+// 全局变量
+let tasks = [];
+let currentEditingTaskId = null;
+let taskToDelete = null;
+
+// DOM 加载完成后初始化
+document.addEventListener('DOMContentLoaded', function() {
+    loadTasks();
+    setupEventListeners();
+});
+
+// 设置事件监听器
+function setupEventListeners() {
+    // 搜索功能
+    document.getElementById('searchInput').addEventListener('input', filterTasks);
+    
+    // 筛选功能
+    document.getElementById('statusFilter').addEventListener('change', filterTasks);
+    document.getElementById('priorityFilter').addEventListener('change', filterTasks);
+    
+    // 表单提交
+    document.getElementById('taskForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        saveTask();
+    });
+}
+
+// 加载所有任务
+async function loadTasks() {
+    try {
+        showLoading();
+        const response = await fetch('/api/tasks');
+        if (!response.ok) throw new Error('加载任务失败');
+        
+        tasks = await response.json();
+        renderTasks(tasks);
+        updateStatistics();
+    } catch (error) {
+        console.error('加载任务失败:', error);
+        showError('加载任务失败，请刷新页面重试');
+    } finally {
+        hideLoading();
+    }
+}
+
+// 渲染任务列表
+function renderTasks(tasksToRender) {
+    const container = document.getElementById('tasksContainer');
+    
+    if (tasksToRender.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="bi bi-inbox"></i>
+                <h5>暂无任务</h5>
+                <p>点击"添加任务"按钮创建您的第一个任务</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = tasksToRender.map(task => createTaskCard(task)).join('');
+}
+
+// 创建任务卡片HTML
+function createTaskCard(task) {
+    const priorityClass = `priority-${task.priority}`;
+    const statusClass = `status-${task.status}`;
+    const dueDateInfo = getDueDateInfo(task.dueDate);
+    
+    return `
+        <div class="task-card card ${priorityClass} fade-in" data-task-id="${task.id}">
+            <div class="card-body">
+                <div class="task-header">
+                    <h6 class="task-title">${escapeHtml(task.title)}</h6>
+                    <div class="task-actions">
+                        <button class="btn btn-outline-primary btn-sm" onclick="editTask('${task.id}')" title="编辑">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="deleteTask('${task.id}')" title="删除">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="task-meta">
+                    <span class="priority-badge priority-${task.priority}">
+                        ${getPriorityText(task.priority)}
+                    </span>
+                    <span class="status-badge ${statusClass}">
+                        ${getStatusText(task.status)}
+                    </span>
+                    ${dueDateInfo.html}
+                </div>
+                
+                ${task.description ? `<div class="task-description">${escapeHtml(task.description)}</div>` : ''}
+                
+                <div class="task-footer">
+                    <small class="text-muted">
+                        创建时间: ${formatDate(task.createdAt)}
+                        ${task.updatedAt ? ` | 更新时间: ${formatDate(task.updatedAt)}` : ''}
+                    </small>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// 获取截止日期信息
+function getDueDateInfo(dueDate) {
+    if (!dueDate) return { html: '', class: '' };
+    
+    const due = new Date(dueDate);
+    const now = new Date();
+    const diffTime = due - now;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    let className = 'task-due-date';
+    let text = `截止: ${formatDate(dueDate)}`;
+    
+    if (diffDays < 0) {
+        className += ' overdue';
+        text += ` (已逾期 ${Math.abs(diffDays)} 天)`;
+    } else if (diffDays <= 3) {
+        className += ' due-soon';
+        if (diffDays === 0) text += ' (今天到期)';
+        else text += ` (${diffDays} 天后到期)`;
+    }
+    
+    return {
+        html: `<span class="${className}"><i class="bi bi-calendar"></i> ${text}</span>`,
+        class: className
+    };
+}
+
+// 更新统计信息
+function updateStatistics() {
+    const total = tasks.length;
+    const pending = tasks.filter(t => t.status === 'pending').length;
+    const inProgress = tasks.filter(t => t.status === 'in-progress').length;
+    const completed = tasks.filter(t => t.status === 'completed').length;
+    
+    document.getElementById('totalTasks').textContent = total;
+    document.getElementById('pendingTasks').textContent = pending;
+    document.getElementById('inProgressTasks').textContent = inProgress;
+    document.getElementById('completedTasks').textContent = completed;
+}
+
+// 筛选任务
+function filterTasks() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    const priorityFilter = document.getElementById('priorityFilter').value;
+    
+    const filteredTasks = tasks.filter(task => {
+        const matchesSearch = task.title.toLowerCase().includes(searchTerm) || 
+                            task.description.toLowerCase().includes(searchTerm);
+        const matchesStatus = !statusFilter || task.status === statusFilter;
+        const matchesPriority = !priorityFilter || task.priority === priorityFilter;
+        
+        return matchesSearch && matchesStatus && matchesPriority;
+    });
+    
+    renderTasks(filteredTasks);
+}
+
+// 打开添加任务模态框
+function openAddModal() {
+    currentEditingTaskId = null;
+    document.getElementById('modalTitle').textContent = '添加任务';
+    document.getElementById('taskForm').reset();
+    document.getElementById('taskId').value = '';
+    
+    // 设置默认截止日期为明天
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    document.getElementById('taskDueDate').value = tomorrow.toISOString().split('T')[0];
+}
+
+// 编辑任务
+function editTask(taskId) {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    
+    currentEditingTaskId = taskId;
+    document.getElementById('modalTitle').textContent = '编辑任务';
+    document.getElementById('taskId').value = task.id;
+    document.getElementById('taskTitle').value = task.title;
+    document.getElementById('taskDescription').value = task.description;
+    document.getElementById('taskPriority').value = task.priority;
+    document.getElementById('taskStatus').value = task.status;
+    document.getElementById('taskDueDate').value = task.dueDate;
+    
+    const modal = new bootstrap.Modal(document.getElementById('taskModal'));
+    modal.show();
+}
+
+// 保存任务
+async function saveTask() {
+    const title = document.getElementById('taskTitle').value.trim();
+    if (!title) {
+        showError('请输入任务标题');
+        return;
+    }
+    
+    const taskData = {
+        title,
+        description: document.getElementById('taskDescription').value.trim(),
+        priority: document.getElementById('taskPriority').value,
+        status: document.getElementById('taskStatus').value,
+        dueDate: document.getElementById('taskDueDate').value
+    };
+    
+    try {
+        let response;
+        if (currentEditingTaskId) {
+            // 更新任务
+            response = await fetch(`/api/tasks/${currentEditingTaskId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(taskData)
+            });
+        } else {
+            // 创建新任务
+            response = await fetch('/api/tasks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(taskData)
+            });
+        }
+        
+        if (!response.ok) throw new Error('保存任务失败');
+        
+        const modal = bootstrap.Modal.getInstance(document.getElementById('taskModal'));
+        modal.hide();
+        
+        await loadTasks();
+        showSuccess(currentEditingTaskId ? '任务更新成功' : '任务创建成功');
+        
+    } catch (error) {
+        console.error('保存任务失败:', error);
+        showError('保存任务失败，请重试');
+    }
+}
+
+// 删除任务
+function deleteTask(taskId) {
+    taskToDelete = taskId;
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
+}
+
+// 确认删除任务
+async function confirmDelete() {
+    if (!taskToDelete) return;
+
+    try {
+        const response = await fetch(`/api/tasks/${taskToDelete}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) throw new Error('删除任务失败');
+
+        const modal = bootstrap.Modal.getInstance(document.getElementById('deleteModal'));
+        modal.hide();
+
+        await loadTasks();
+        showSuccess('任务删除成功');
+
+    } catch (error) {
+        console.error('删除任务失败:', error);
+        showError('删除任务失败，请重试');
+    } finally {
+        taskToDelete = null;
+    }
+}
+
+// 工具函数
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function getPriorityText(priority) {
+    const priorityMap = {
+        'high': '高',
+        'medium': '中',
+        'low': '低'
+    };
+    return priorityMap[priority] || priority;
+}
+
+function getStatusText(status) {
+    const statusMap = {
+        'pending': '待处理',
+        'in-progress': '进行中',
+        'completed': '已完成'
+    };
+    return statusMap[status] || status;
+}
+
+function showLoading() {
+    document.getElementById('tasksContainer').innerHTML = `
+        <div class="loading">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">加载中...</span>
+            </div>
+        </div>
+    `;
+}
+
+function hideLoading() {
+    // Loading will be replaced by renderTasks
+}
+
+function showSuccess(message) {
+    showToast(message, 'success');
+}
+
+function showError(message) {
+    showToast(message, 'danger');
+}
+
+function showToast(message, type = 'info') {
+    // 创建toast容器（如果不存在）
+    let toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toastContainer';
+        toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+        toastContainer.style.zIndex = '9999';
+        document.body.appendChild(toastContainer);
+    }
+
+    // 创建toast元素
+    const toastId = 'toast-' + Date.now();
+    const toastHtml = `
+        <div id="${toastId}" class="toast align-items-center text-bg-${type} border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    `;
+
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+
+    // 显示toast
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement, {
+        autohide: true,
+        delay: 3000
+    });
+
+    toast.show();
+
+    // 自动清理
+    toastElement.addEventListener('hidden.bs.toast', function() {
+        toastElement.remove();
+    });
+}

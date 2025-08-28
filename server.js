@@ -5,7 +5,7 @@ const path = require('path');
 const TaskDB = require('./database');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8765;
 
 // 中间件
 app.use(bodyParser.json());
@@ -30,7 +30,7 @@ app.get('/api/tasks', async (req, res) => {
 
 // 创建新任务
 app.post('/api/tasks', async (req, res) => {
-  const { title, description, priority, dueDate } = req.body;
+  const { title, description, priority, dueDate, projectId } = req.body;
 
   if (!title) {
     return res.status(400).json({ error: '任务标题不能为空' });
@@ -43,6 +43,7 @@ app.post('/api/tasks', async (req, res) => {
     priority: priority || 'medium',
     status: 'pending',
     dueDate: dueDate || '',
+    projectId: projectId || null,
     createdAt: new Date().toISOString()
   };
 
@@ -58,7 +59,7 @@ app.post('/api/tasks', async (req, res) => {
 // 更新任务
 app.put('/api/tasks/:id', async (req, res) => {
   const { id } = req.params;
-  const { title, description, priority, status, dueDate } = req.body;
+  const { title, description, priority, status, dueDate, projectId } = req.body;
 
   try {
     // 先获取现有任务
@@ -74,6 +75,7 @@ app.put('/api/tasks/:id', async (req, res) => {
       priority: priority || existingTask.priority,
       status: status || existingTask.status,
       dueDate: dueDate !== undefined ? dueDate : existingTask.dueDate,
+      projectId: projectId !== undefined ? projectId : existingTask.projectId,
       updatedAt: new Date().toISOString()
     };
 
@@ -184,6 +186,126 @@ ${task.updatedAt ? `**更新时间：** ${new Date(task.updatedAt).toLocaleStrin
   } catch (error) {
     console.error('WebHook推送失败:', error);
     res.status(500).json({ error: 'WebHook推送失败: ' + error.message });
+  }
+});
+
+// 项目管理API
+// 获取所有项目
+app.get('/api/projects', async (req, res) => {
+  try {
+    const projects = await TaskDB.getAllProjects();
+    res.json(projects);
+  } catch (error) {
+    console.error('获取项目失败:', error);
+    res.status(500).json({ error: '获取项目失败' });
+  }
+});
+
+// 根据ID获取项目
+app.get('/api/projects/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const project = await TaskDB.getProjectById(id);
+    if (!project) {
+      return res.status(404).json({ error: '项目未找到' });
+    }
+    res.json(project);
+  } catch (error) {
+    console.error('获取项目失败:', error);
+    res.status(500).json({ error: '获取项目失败' });
+  }
+});
+
+// 创建新项目
+app.post('/api/projects', async (req, res) => {
+  const { name, description, color } = req.body;
+
+  if (!name) {
+    return res.status(400).json({ error: '项目名称不能为空' });
+  }
+
+  const newProject = {
+    id: uuidv4(),
+    name,
+    description: description || '',
+    color: color || '#007bff',
+    createdAt: new Date().toISOString()
+  };
+
+  try {
+    const createdProject = await TaskDB.createProject(newProject);
+    res.status(201).json(createdProject);
+  } catch (error) {
+    console.error('创建项目失败:', error);
+    res.status(500).json({ error: '创建项目失败' });
+  }
+});
+
+// 更新项目
+app.put('/api/projects/:id', async (req, res) => {
+  const { id } = req.params;
+  const { name, description, color } = req.body;
+
+  try {
+    // 先获取现有项目
+    const existingProject = await TaskDB.getProjectById(id);
+    if (!existingProject) {
+      return res.status(404).json({ error: '项目未找到' });
+    }
+
+    // 准备更新数据
+    const updates = {
+      name: name || existingProject.name,
+      description: description !== undefined ? description : existingProject.description,
+      color: color || existingProject.color,
+      updatedAt: new Date().toISOString()
+    };
+
+    await TaskDB.updateProject(id, updates);
+
+    // 返回更新后的项目
+    const updatedProject = await TaskDB.getProjectById(id);
+    res.json(updatedProject);
+  } catch (error) {
+    console.error('更新项目失败:', error);
+    if (error.message === '项目未找到') {
+      res.status(404).json({ error: '项目未找到' });
+    } else {
+      res.status(500).json({ error: '更新项目失败' });
+    }
+  }
+});
+
+// 删除项目
+app.delete('/api/projects/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    await TaskDB.deleteProject(id);
+    res.json({ message: '项目删除成功' });
+  } catch (error) {
+    console.error('删除项目失败:', error);
+    if (error.message === '项目未找到') {
+      res.status(404).json({ error: '项目未找到' });
+    } else if (error.message.includes('该项目下还有任务')) {
+      res.status(400).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: '删除项目失败' });
+    }
+  }
+});
+
+// 获取项目任务统计
+app.get('/api/projects/:id/stats', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const stats = await TaskDB.getProjectTaskStats(id);
+    res.json(stats);
+  } catch (error) {
+    console.error('获取项目统计失败:', error);
+    res.status(500).json({ error: '获取项目统计失败' });
   }
 });
 

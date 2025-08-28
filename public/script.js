@@ -1,10 +1,15 @@
 // 全局变量
 let tasks = [];
+let projects = [];
 let currentEditingTaskId = null;
+let currentEditingProjectId = null;
+let currentSelectedProjectId = '';
 let taskToDelete = null;
+let projectToDelete = null;
 
 // DOM 加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
+    loadProjects();
     loadTasks();
     setupEventListeners();
     loadSettings();
@@ -94,6 +99,7 @@ function createTaskCard(task) {
                     <span class="status-badge ${statusClass}">
                         ${getStatusText(task.status)}
                     </span>
+                    ${getProjectBadge(task.projectId)}
                     ${dueDateInfo.html}
                 </div>
                 
@@ -148,6 +154,9 @@ function updateStatistics() {
     document.getElementById('pendingTasks').textContent = pending;
     document.getElementById('inProgressTasks').textContent = inProgress;
     document.getElementById('completedTasks').textContent = completed;
+
+    // 同时更新侧边栏
+    renderProjectsSidebar();
 }
 
 // 更新单个任务卡片的样式
@@ -275,6 +284,7 @@ function editTask(taskId) {
     document.getElementById('taskPriority').value = task.priority;
     document.getElementById('taskStatus').value = task.status;
     document.getElementById('taskDueDate').value = task.dueDate;
+    document.getElementById('taskProject').value = task.projectId || '';
     
     const modal = new bootstrap.Modal(document.getElementById('taskModal'));
     modal.show();
@@ -293,7 +303,8 @@ async function saveTask() {
         description: document.getElementById('taskDescription').value.trim(),
         priority: document.getElementById('taskPriority').value,
         status: document.getElementById('taskStatus').value,
-        dueDate: document.getElementById('taskDueDate').value
+        dueDate: document.getElementById('taskDueDate').value,
+        projectId: document.getElementById('taskProject').value || null
     };
     
     try {
@@ -407,6 +418,21 @@ function getStatusText(status) {
         'completed': '已完成'
     };
     return statusMap[status] || status;
+}
+
+function getProjectBadge(projectId) {
+    if (!projectId) {
+        return '<span class="project-badge no-project"><i class="bi bi-folder-x"></i> 无项目</span>';
+    }
+
+    const project = projects.find(p => p.id === projectId);
+    if (!project) {
+        return '<span class="project-badge unknown-project"><i class="bi bi-question-circle"></i> 未知项目</span>';
+    }
+
+    return `<span class="project-badge" style="background-color: ${project.color}20; color: ${project.color}; border: 1px solid ${project.color}40;">
+        <i class="bi bi-folder"></i> ${escapeHtml(project.name)}
+    </span>`;
 }
 
 function showLoading() {
@@ -548,7 +574,7 @@ function updateWebhookPreview(task) {
     };
 
     const previewContent = `
-        <strong>📋 任务推送通知</strong><br><br>
+        <strong>📋 任务状态推送通知</strong><br><br>
         <strong>任务标题：</strong> ${escapeHtml(task.title)}<br>
         <strong>任务描述：</strong> ${escapeHtml(task.description) || '无'}<br>
         <strong>任务状态：</strong> ${statusMap[task.status] || task.status}<br>
@@ -606,5 +632,347 @@ async function confirmWebhookPush() {
     } finally {
         // 清理临时变量
         window.currentPushTaskId = null;
+    }
+}
+
+// ==================== 项目管理功能 ====================
+
+// 加载所有项目
+async function loadProjects() {
+    try {
+        const response = await fetch('/api/projects');
+        if (!response.ok) throw new Error('加载项目失败');
+
+        projects = await response.json();
+        renderProjectsSidebar();
+        updateProjectOptions();
+        updateProjectManagementList();
+    } catch (error) {
+        console.error('加载项目失败:', error);
+        showError('加载项目失败，请刷新页面重试');
+    }
+}
+
+// 渲染侧边栏项目列表
+function renderProjectsSidebar() {
+    const container = document.getElementById('projectsList');
+    if (!container) return;
+
+    // 更新全部项目的任务数量
+    const allProjectsCountElement = document.getElementById('allProjectsCount');
+    if (allProjectsCountElement) {
+        allProjectsCountElement.textContent = tasks.length;
+    }
+
+    if (projects.length === 0) {
+        container.innerHTML = `
+            <div class="text-center p-3 text-muted">
+                <i class="bi bi-folder-x"></i>
+                <div>暂无项目</div>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = projects.map(project => {
+        const projectTasks = tasks.filter(task => task.projectId === project.id);
+        const taskCount = projectTasks.length;
+
+        return `
+            <div class="project-item ${currentSelectedProjectId === project.id ? 'active' : ''}"
+                 data-project-id="${project.id}"
+                 onclick="selectProject('${project.id}')">
+                <div class="project-color" style="background-color: ${project.color};"></div>
+                <div class="project-info">
+                    <div class="project-name" title="${escapeHtml(project.name)}">${escapeHtml(project.name)}</div>
+                    <div class="project-count">${taskCount}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// 选择项目
+function selectProject(projectId) {
+    currentSelectedProjectId = projectId;
+
+    // 更新侧边栏选中状态
+    document.querySelectorAll('.project-item').forEach(item => {
+        item.classList.remove('active');
+    });
+
+    const selectedItem = document.querySelector(`[data-project-id="${projectId}"]`);
+    if (selectedItem) {
+        selectedItem.classList.add('active');
+    }
+
+    // 更新页面标题
+    const titleElement = document.getElementById('currentProjectTitle');
+    if (titleElement) {
+        if (projectId === '') {
+            titleElement.textContent = '全部项目';
+        } else {
+            const project = projects.find(p => p.id === projectId);
+            titleElement.textContent = project ? project.name : '未知项目';
+        }
+    }
+
+    // 筛选并显示任务
+    filterTasksByProject();
+}
+
+// 根据项目筛选任务
+function filterTasksByProject() {
+    let filteredTasks;
+
+    if (currentSelectedProjectId === '') {
+        // 显示所有任务
+        filteredTasks = tasks;
+    } else {
+        // 显示指定项目的任务
+        filteredTasks = tasks.filter(task => task.projectId === currentSelectedProjectId);
+    }
+
+    renderTasks(filteredTasks);
+    updateStatisticsForProject(filteredTasks);
+    renderProjectsSidebar(); // 确保侧边栏也更新
+}
+
+// 更新项目相关的统计信息
+function updateStatisticsForProject(filteredTasks) {
+    const total = filteredTasks.length;
+    const pending = filteredTasks.filter(t => t.status === 'pending').length;
+    const inProgress = filteredTasks.filter(t => t.status === 'in-progress').length;
+    const completed = filteredTasks.filter(t => t.status === 'completed').length;
+
+    document.getElementById('totalTasks').textContent = total;
+    document.getElementById('pendingTasks').textContent = pending;
+    document.getElementById('inProgressTasks').textContent = inProgress;
+    document.getElementById('completedTasks').textContent = completed;
+}
+
+// 更新任务表单中的项目选项
+function updateProjectOptions() {
+    const select = document.getElementById('taskProject');
+    if (!select) return;
+
+    // 清空现有选项（保留"无项目"选项）
+    select.innerHTML = '<option value="">无项目</option>';
+
+    // 添加项目选项
+    projects.forEach(project => {
+        const option = document.createElement('option');
+        option.value = project.id;
+        option.textContent = project.name;
+        select.appendChild(option);
+    });
+}
+
+// 切换侧边栏显示/隐藏
+function toggleSidebar() {
+    const sidebar = document.getElementById('projectSidebar');
+    const isMobile = window.innerWidth <= 768;
+
+    if (isMobile) {
+        // 移动端：使用overlay模式
+        sidebar.classList.toggle('show');
+
+        // 添加或移除overlay
+        let overlay = document.querySelector('.sidebar-overlay');
+        if (sidebar.classList.contains('show')) {
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.className = 'sidebar-overlay';
+                overlay.onclick = () => toggleSidebar();
+                document.body.appendChild(overlay);
+            }
+            overlay.classList.add('show');
+        } else {
+            if (overlay) {
+                overlay.classList.remove('show');
+            }
+        }
+    } else {
+        // 桌面端：折叠模式
+        sidebar.classList.toggle('collapsed');
+    }
+}
+
+// 打开项目管理模态框
+function openProjectModal() {
+    updateProjectManagementList();
+}
+
+// 更新项目管理列表
+function updateProjectManagementList() {
+    const container = document.getElementById('projectsManagementList');
+    if (!container) return;
+
+    if (projects.length === 0) {
+        container.innerHTML = `
+            <div class="text-center p-4 text-muted">
+                <i class="bi bi-folder-x fs-1"></i>
+                <h6>暂无项目</h6>
+                <p>点击"新建项目"按钮创建您的第一个项目</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = projects.map(project => {
+        const projectTasks = tasks.filter(task => task.projectId === project.id);
+        const stats = {
+            total: projectTasks.length,
+            pending: projectTasks.filter(t => t.status === 'pending').length,
+            inProgress: projectTasks.filter(t => t.status === 'in-progress').length,
+            completed: projectTasks.filter(t => t.status === 'completed').length
+        };
+
+        return `
+            <div class="project-management-item">
+                <div class="project-management-color" style="background-color: ${project.color};"></div>
+                <div class="project-management-info">
+                    <div class="project-management-name">${escapeHtml(project.name)}</div>
+                    <div class="project-management-description">${escapeHtml(project.description || '无描述')}</div>
+                    <div class="project-management-stats">
+                        <span class="project-stat">总计: ${stats.total}</span>
+                        <span class="project-stat">待处理: ${stats.pending}</span>
+                        <span class="project-stat">进行中: ${stats.inProgress}</span>
+                        <span class="project-stat">已完成: ${stats.completed}</span>
+                    </div>
+                </div>
+                <div class="project-management-actions">
+                    <button class="btn btn-outline-primary btn-sm" onclick="editProject('${project.id}')" title="编辑">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm" onclick="deleteProject('${project.id}')" title="删除">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// 打开新建项目模态框
+function openAddProjectModal() {
+    currentEditingProjectId = null;
+    document.getElementById('projectModalTitle').textContent = '新建项目';
+    document.getElementById('projectForm').reset();
+    document.getElementById('projectId').value = '';
+    document.getElementById('projectColor').value = '#007bff';
+
+    const modal = new bootstrap.Modal(document.getElementById('projectEditModal'));
+    modal.show();
+}
+
+// 编辑项目
+function editProject(projectId) {
+    const project = projects.find(p => p.id === projectId);
+    if (!project) return;
+
+    currentEditingProjectId = projectId;
+    document.getElementById('projectModalTitle').textContent = '编辑项目';
+    document.getElementById('projectId').value = project.id;
+    document.getElementById('projectName').value = project.name;
+    document.getElementById('projectDescription').value = project.description || '';
+    document.getElementById('projectColor').value = project.color;
+
+    const modal = new bootstrap.Modal(document.getElementById('projectEditModal'));
+    modal.show();
+}
+
+// 保存项目
+async function saveProject() {
+    const name = document.getElementById('projectName').value.trim();
+    if (!name) {
+        showError('请输入项目名称');
+        return;
+    }
+
+    const projectData = {
+        name,
+        description: document.getElementById('projectDescription').value.trim(),
+        color: document.getElementById('projectColor').value
+    };
+
+    try {
+        let response;
+        if (currentEditingProjectId) {
+            // 更新项目
+            response = await fetch(`/api/projects/${currentEditingProjectId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(projectData)
+            });
+        } else {
+            // 创建新项目
+            response = await fetch('/api/projects', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(projectData)
+            });
+        }
+
+        if (!response.ok) throw new Error('保存项目失败');
+
+        const modal = bootstrap.Modal.getInstance(document.getElementById('projectEditModal'));
+        modal.hide();
+
+        // 重新加载项目数据
+        await loadProjects();
+
+        showSuccess(currentEditingProjectId ? '项目更新成功' : '项目创建成功');
+
+    } catch (error) {
+        console.error('保存项目失败:', error);
+        showError('保存项目失败，请重试');
+    }
+}
+
+// 删除项目
+function deleteProject(projectId) {
+    const project = projects.find(p => p.id === projectId);
+    if (!project) return;
+
+    projectToDelete = projectId;
+    document.getElementById('projectDeleteName').textContent = project.name;
+
+    const modal = new bootstrap.Modal(document.getElementById('projectDeleteModal'));
+    modal.show();
+}
+
+// 确认删除项目
+async function confirmDeleteProject() {
+    if (!projectToDelete) return;
+
+    try {
+        const response = await fetch(`/api/projects/${projectToDelete}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || '删除项目失败');
+        }
+
+        const modal = bootstrap.Modal.getInstance(document.getElementById('projectDeleteModal'));
+        modal.hide();
+
+        // 重新加载项目数据
+        await loadProjects();
+
+        // 如果删除的是当前选中的项目，切换到"全部项目"
+        if (currentSelectedProjectId === projectToDelete) {
+            selectProject('');
+        }
+
+        showSuccess('项目删除成功');
+
+    } catch (error) {
+        console.error('删除项目失败:', error);
+        showError(error.message);
+    } finally {
+        projectToDelete = null;
     }
 }

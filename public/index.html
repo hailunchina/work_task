@@ -11,10 +11,10 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container-fluid">
+    <div class="container-fluid p-0">
         <!-- 导航栏 -->
-        <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
-            <div class="container">
+        <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-0">
+            <div class="container-fluid">
                 <a class="navbar-brand" href="#">
                     <i class="bi bi-calendar-check me-2"></i>
                     工作任务计划表
@@ -24,6 +24,9 @@
                         <i class="bi bi-plus-circle me-1"></i>
                         添加任务
                     </button>
+                    <button class="btn btn-outline-light" data-bs-toggle="modal" data-bs-target="#projectModal" onclick="openProjectModal()">
+                        <i class="bi bi-folder-plus me-1"></i>项目管理
+                    </button>
                     <button class="btn btn-outline-light" data-bs-toggle="modal" data-bs-target="#settingsModal" title="设置">
                         <i class="bi bi-gear me-1"></i>
                         WebHook设置
@@ -32,62 +35,100 @@
             </div>
         </nav>
 
-        <div class="container">
-            <!-- 统计卡片 -->
-            <div class="row mb-4">
-                <div class="col-md-3">
-                    <div class="card bg-primary text-white">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <h6 class="card-title">总任务</h6>
-                                    <h3 id="totalTasks">0</h3>
-                                </div>
-                                <i class="bi bi-list-task fs-1"></i>
-                            </div>
+        <!-- 主要内容区域 -->
+        <div class="d-flex">
+            <!-- 左侧项目侧边栏 -->
+            <div class="sidebar bg-light border-end" id="projectSidebar">
+                <div class="sidebar-header p-3 border-bottom">
+                    <h6 class="mb-0">
+                        <i class="bi bi-folder2 me-2"></i>项目列表
+                    </h6>
+                </div>
+                <div class="sidebar-content">
+                    <!-- 全部项目选项 -->
+                    <div class="project-item active" data-project-id="" onclick="selectProject('')">
+                        <div class="project-color" style="background-color: #6c757d;"></div>
+                        <div class="project-info">
+                            <div class="project-name">全部项目</div>
+                            <div class="project-count" id="allProjectsCount">0</div>
                         </div>
                     </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card bg-warning text-white">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <h6 class="card-title">待处理</h6>
-                                    <h3 id="pendingTasks">0</h3>
-                                </div>
-                                <i class="bi bi-clock fs-1"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card bg-info text-white">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <h6 class="card-title">进行中</h6>
-                                    <h3 id="inProgressTasks">0</h3>
-                                </div>
-                                <i class="bi bi-arrow-repeat fs-1"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card bg-success text-white">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <h6 class="card-title">已完成</h6>
-                                    <h3 id="completedTasks">0</h3>
-                                </div>
-                                <i class="bi bi-check-circle fs-1"></i>
-                            </div>
-                        </div>
+
+                    <!-- 项目列表将在这里动态加载 -->
+                    <div id="projectsList">
+                        <!-- 项目项目将通过JavaScript动态添加 -->
                     </div>
                 </div>
             </div>
+
+            <!-- 右侧主内容区域 -->
+            <div class="main-content flex-grow-1">
+                <div class="container-fluid p-4">
+                    <!-- 当前项目标题 -->
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h4 class="mb-0" id="currentProjectTitle">全部项目</h4>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-outline-secondary btn-sm" onclick="toggleSidebar()">
+                                <i class="bi bi-list"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 统计卡片 -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card bg-primary text-white">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between">
+                                        <div>
+                                            <h6 class="card-title">总任务</h6>
+                                            <h3 id="totalTasks">0</h3>
+                                        </div>
+                                        <i class="bi bi-list-task fs-1"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-warning text-white">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between">
+                                        <div>
+                                            <h6 class="card-title">待处理</h6>
+                                            <h3 id="pendingTasks">0</h3>
+                                        </div>
+                                        <i class="bi bi-clock fs-1"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-info text-white">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between">
+                                        <div>
+                                            <h6 class="card-title">进行中</h6>
+                                            <h3 id="inProgressTasks">0</h3>
+                                        </div>
+                                        <i class="bi bi-arrow-repeat fs-1"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-success text-white">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between">
+                                        <div>
+                                            <h6 class="card-title">已完成</h6>
+                                            <h3 id="completedTasks">0</h3>
+                                        </div>
+                                        <i class="bi bi-check-circle fs-1"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
             <!-- 筛选和搜索 -->
             <div class="row mb-3">
@@ -130,14 +171,16 @@
                 </div>
             </div>
 
-            <!-- 任务列表 -->
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">任务列表</h5>
-                </div>
-                <div class="card-body">
-                    <div id="tasksContainer">
-                        <!-- 任务将在这里动态加载 -->
+                    <!-- 任务列表 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">任务列表</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="tasksContainer">
+                                <!-- 任务将在这里动态加载 -->
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -162,6 +205,13 @@
                         <div class="mb-3">
                             <label for="taskDescription" class="form-label">任务描述</label>
                             <textarea class="form-control" id="taskDescription" rows="3"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="taskProject" class="form-label">所属项目</label>
+                            <select class="form-select" id="taskProject">
+                                <option value="">无项目</option>
+                                <!-- 项目选项将通过JavaScript动态添加 -->
+                            </select>
                         </div>
                         <div class="row">
                             <div class="col-md-6">
@@ -294,6 +344,102 @@
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
                     <button type="button" class="btn btn-primary" onclick="confirmWebhookPush()">
                         <i class="bi bi-send me-1"></i>确认推送
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 项目管理模态框 -->
+    <div class="modal fade" id="projectModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-folder2 me-2"></i>项目管理
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- 项目操作按钮 -->
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="mb-0">项目列表</h6>
+                        <button class="btn btn-primary btn-sm" onclick="openAddProjectModal()">
+                            <i class="bi bi-plus-lg me-1"></i>新建项目
+                        </button>
+                    </div>
+
+                    <!-- 项目列表 -->
+                    <div id="projectsManagementList">
+                        <!-- 项目列表将通过JavaScript动态加载 -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 项目编辑模态框 -->
+    <div class="modal fade" id="projectEditModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="projectModalTitle">新建项目</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="projectForm">
+                        <input type="hidden" id="projectId">
+                        <div class="mb-3">
+                            <label for="projectName" class="form-label">项目名称 *</label>
+                            <input type="text" class="form-control" id="projectName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="projectDescription" class="form-label">项目描述</label>
+                            <textarea class="form-control" id="projectDescription" rows="3"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="projectColor" class="form-label">项目颜色</label>
+                            <div class="d-flex gap-2 align-items-center">
+                                <input type="color" class="form-control form-control-color" id="projectColor" value="#007bff">
+                                <span class="text-muted">选择项目标识颜色</span>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveProject()">
+                        <i class="bi bi-check-lg me-1"></i>保存
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 项目删除确认模态框 -->
+    <div class="modal fade" id="projectDeleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-exclamation-triangle text-warning me-2"></i>确认删除
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>确定要删除项目 "<span id="projectDeleteName"></span>" 吗？</p>
+                    <div class="alert alert-warning">
+                        <i class="bi bi-info-circle me-2"></i>
+                        注意：只有没有关联任务的项目才能被删除。
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-danger" onclick="confirmDeleteProject()">
+                        <i class="bi bi-trash me-1"></i>删除
                     </button>
                 </div>
             </div>

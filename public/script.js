@@ -66,9 +66,9 @@ function createTaskCard(task) {
     const priorityClass = `priority-${task.priority}`;
     const statusClass = `status-${task.status}`;
     const dueDateInfo = getDueDateInfo(task.dueDate);
-    
+
     return `
-        <div class="task-card card ${priorityClass} fade-in" data-task-id="${task.id}">
+        <div class="task-card card ${priorityClass} ${statusClass} fade-in" data-task-id="${task.id}">
             <div class="card-body">
                 <div class="task-header">
                     <h6 class="task-title">${escapeHtml(task.title)}</h6>
@@ -95,7 +95,7 @@ function createTaskCard(task) {
                 ${task.description ? `<div class="task-description">${escapeHtml(task.description)}</div>` : ''}
                 
                 <div class="task-footer">
-                    <small class="text-muted">
+                    <small class="task-footer-text">
                         创建时间: ${formatDate(task.createdAt)}
                         ${task.updatedAt ? ` | 更新时间: ${formatDate(task.updatedAt)}` : ''}
                     </small>
@@ -138,11 +138,31 @@ function updateStatistics() {
     const pending = tasks.filter(t => t.status === 'pending').length;
     const inProgress = tasks.filter(t => t.status === 'in-progress').length;
     const completed = tasks.filter(t => t.status === 'completed').length;
-    
+
     document.getElementById('totalTasks').textContent = total;
     document.getElementById('pendingTasks').textContent = pending;
     document.getElementById('inProgressTasks').textContent = inProgress;
     document.getElementById('completedTasks').textContent = completed;
+}
+
+// 更新单个任务卡片的样式
+function updateTaskCardStyle(taskId, newStatus, newPriority) {
+    const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
+    if (!taskCard) return;
+
+    // 移除旧的状态和优先级类
+    taskCard.classList.remove('status-pending', 'status-in-progress', 'status-completed');
+    taskCard.classList.remove('priority-high', 'priority-medium', 'priority-low');
+
+    // 添加新的状态和优先级类
+    taskCard.classList.add(`status-${newStatus}`);
+    taskCard.classList.add(`priority-${newPriority}`);
+
+    // 添加更新动画效果
+    taskCard.style.transform = 'scale(1.02)';
+    setTimeout(() => {
+        taskCard.style.transform = 'scale(1)';
+    }, 200);
 }
 
 // 筛选任务
@@ -232,8 +252,19 @@ async function saveTask() {
         
         const modal = bootstrap.Modal.getInstance(document.getElementById('taskModal'));
         modal.hide();
-        
-        await loadTasks();
+
+        if (currentEditingTaskId) {
+            // 如果是更新任务，先更新卡片样式，然后重新加载数据
+            updateTaskCardStyle(currentEditingTaskId, taskData.status, taskData.priority);
+            // 延迟重新加载以显示动画效果
+            setTimeout(async () => {
+                await loadTasks();
+            }, 300);
+        } else {
+            // 如果是新任务，直接重新加载
+            await loadTasks();
+        }
+
         showSuccess(currentEditingTaskId ? '任务更新成功' : '任务创建成功');
         
     } catch (error) {
@@ -241,6 +272,8 @@ async function saveTask() {
         showError('保存任务失败，请重试');
     }
 }
+
+
 
 // 删除任务
 function deleteTask(taskId) {

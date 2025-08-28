@@ -17,6 +17,7 @@ function setupEventListeners() {
     // 筛选功能
     document.getElementById('statusFilter').addEventListener('change', filterTasks);
     document.getElementById('priorityFilter').addEventListener('change', filterTasks);
+    document.getElementById('timeFilter').addEventListener('change', filterTasks);
     
     // 表单提交
     document.getElementById('taskForm').addEventListener('submit', function(e) {
@@ -170,17 +171,78 @@ function filterTasks() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
     const statusFilter = document.getElementById('statusFilter').value;
     const priorityFilter = document.getElementById('priorityFilter').value;
-    
+    const timeFilter = document.getElementById('timeFilter').value;
+
     const filteredTasks = tasks.filter(task => {
-        const matchesSearch = task.title.toLowerCase().includes(searchTerm) || 
+        const matchesSearch = task.title.toLowerCase().includes(searchTerm) ||
                             task.description.toLowerCase().includes(searchTerm);
         const matchesStatus = !statusFilter || task.status === statusFilter;
         const matchesPriority = !priorityFilter || task.priority === priorityFilter;
-        
-        return matchesSearch && matchesStatus && matchesPriority;
+        const matchesTime = !timeFilter || matchesTimeFilter(task, timeFilter);
+
+        return matchesSearch && matchesStatus && matchesPriority && matchesTime;
     });
-    
+
     renderTasks(filteredTasks);
+}
+
+// 时间段筛选逻辑
+function matchesTimeFilter(task, timeFilter) {
+    if (!task.dueDate) {
+        // 没有截止日期的任务只在"所有时间"中显示
+        return false;
+    }
+
+    const now = new Date();
+    const dueDate = new Date(task.dueDate);
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    switch (timeFilter) {
+        case 'today':
+            // 今天到期
+            return dueDate >= today && dueDate < tomorrow;
+
+        case 'week':
+            // 本周到期（从今天开始的7天内）
+            const weekEnd = new Date(today);
+            weekEnd.setDate(weekEnd.getDate() + 7);
+            return dueDate >= today && dueDate < weekEnd;
+
+        case 'month':
+            // 本月到期
+            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+            return dueDate >= monthStart && dueDate < monthEnd;
+
+        case 'overdue':
+            // 已逾期
+            return dueDate < today;
+
+        case 'upcoming':
+            // 即将到期（未来3天内）
+            const upcomingEnd = new Date(today);
+            upcomingEnd.setDate(upcomingEnd.getDate() + 3);
+            return dueDate >= today && dueDate < upcomingEnd;
+
+        default:
+            return true;
+    }
+}
+
+// 清除所有筛选
+function clearAllFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('priorityFilter').value = '';
+    document.getElementById('timeFilter').value = '';
+
+    // 重新渲染所有任务
+    renderTasks(tasks);
+
+    // 显示提示
+    showSuccess('已清除所有筛选条件');
 }
 
 // 打开添加任务模态框

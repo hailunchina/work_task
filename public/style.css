@@ -200,6 +200,34 @@ body {
     border-radius: 8px 0 0 8px;
 }
 
+/* 筛选区域样式 */
+.filter-section {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    border: 1px solid #e9ecef;
+}
+
+.filter-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.25rem;
+}
+
+/* 重置按钮特殊样式 */
+.btn-reset {
+    transition: all 0.2s ease;
+}
+
+.btn-reset:hover {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    color: white;
+    transform: rotate(180deg);
+}
+
 .task-due-date {
     font-size: 0.85rem;
     color: rgba(255, 255, 255, 0.8);

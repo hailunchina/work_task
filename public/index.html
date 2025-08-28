@@ -85,13 +85,13 @@
 
             <!-- 筛选和搜索 -->
             <div class="row mb-3">
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <div class="input-group">
                         <span class="input-group-text"><i class="bi bi-search"></i></span>
                         <input type="text" class="form-control" id="searchInput" placeholder="搜索任务...">
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <select class="form-select" id="statusFilter">
                         <option value="">所有状态</option>
                         <option value="pending">待处理</option>
@@ -99,13 +99,28 @@
                         <option value="completed">已完成</option>
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <select class="form-select" id="priorityFilter">
                         <option value="">所有优先级</option>
                         <option value="high">高</option>
                         <option value="medium">中</option>
                         <option value="low">低</option>
                     </select>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select" id="timeFilter">
+                        <option value="">所有时间</option>
+                        <option value="today">今天</option>
+                        <option value="week">本周</option>
+                        <option value="month">本月</option>
+                        <option value="overdue">已逾期</option>
+                        <option value="upcoming">即将到期</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-outline-secondary w-100" onclick="clearAllFilters()" title="清除所有筛选">
+                        <i class="bi bi-arrow-clockwise me-1"></i>重置
+                    </button>
                 </div>
             </div>
 

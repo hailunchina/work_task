@@ -22,6 +22,7 @@ function initializeDatabase() {
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
             description TEXT,
+            markdown_description TEXT,
             color TEXT DEFAULT '#007bff',
             created_at TEXT NOT NULL,
             updated_at TEXT
@@ -323,6 +324,7 @@ const TaskDB = {
                         id: row.id,
                         name: row.name,
                         description: row.description,
+                        markdownDescription: row.markdown_description,
                         color: row.color,
                         createdAt: row.created_at,
                         updatedAt: row.updated_at
@@ -345,6 +347,7 @@ const TaskDB = {
                         id: row.id,
                         name: row.name,
                         description: row.description,
+                        markdownDescription: row.markdown_description,
                         color: row.color,
                         createdAt: row.created_at,
                         updatedAt: row.updated_at
@@ -361,14 +364,15 @@ const TaskDB = {
     createProject: (project) => {
         return new Promise((resolve, reject) => {
             const sql = `
-                INSERT INTO projects (id, name, description, color, created_at)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO projects (id, name, description, markdown_description, color, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
             `;
 
             db.run(sql, [
                 project.id,
                 project.name,
                 project.description,
+                project.markdownDescription || '',
                 project.color,
                 project.createdAt
             ], function(err) {
@@ -386,13 +390,14 @@ const TaskDB = {
         return new Promise((resolve, reject) => {
             const sql = `
                 UPDATE projects
-                SET name = ?, description = ?, color = ?, updated_at = ?
+                SET name = ?, description = ?, markdown_description = ?, color = ?, updated_at = ?
                 WHERE id = ?
             `;
 
             db.run(sql, [
                 updates.name,
                 updates.description,
+                updates.markdownDescription,
                 updates.color,
                 updates.updatedAt,
                 id
@@ -435,6 +440,31 @@ const TaskDB = {
                         resolve();
                     }
                 });
+            });
+        });
+    },
+
+    // 更新项目说明
+    updateProjectDescription: (id, markdownDescription) => {
+        return new Promise((resolve, reject) => {
+            const sql = `
+                UPDATE projects
+                SET markdown_description = ?, updated_at = ?
+                WHERE id = ?
+            `;
+
+            db.run(sql, [
+                markdownDescription,
+                new Date().toISOString(),
+                id
+            ], function(err) {
+                if (err) {
+                    reject(err);
+                } else if (this.changes === 0) {
+                    reject(new Error('项目未找到'));
+                } else {
+                    resolve();
+                }
             });
         });
     },

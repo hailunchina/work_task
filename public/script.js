@@ -752,6 +752,11 @@ function selectProject(projectId) {
     // 更新Tab内容（无论是全部项目还是具体项目）
     updateFlowchartTab();
     updateProgressTab();
+
+    // 如果选择了具体项目，更新项目说明Tab
+    if (projectId !== '') {
+        updateProjectDescriptionTab();
+    }
 }
 
 // 根据项目筛选任务
@@ -1035,10 +1040,15 @@ function activateTab(tabId) {
 // 更新Tab标签文本 - 全部项目模式
 function updateTabLabelsForAllProjects() {
     const tasksTab = document.getElementById('tasks-tab');
+    const descriptionTab = document.getElementById('description-tab');
     const flowchartTab = document.getElementById('flowchart-tab');
     const progressTab = document.getElementById('progress-tab');
 
     if (tasksTab) tasksTab.innerHTML = '<i class="bi bi-list-task me-2"></i>全部任务';
+    if (descriptionTab) {
+        descriptionTab.style.display = 'none'; // 全部项目模式下隐藏项目说明Tab
+        descriptionTab.parentElement.style.display = 'none';
+    }
     if (flowchartTab) flowchartTab.innerHTML = '<i class="bi bi-diagram-3 me-2"></i>项目概览';
     if (progressTab) progressTab.innerHTML = '<i class="bi bi-graph-up me-2"></i>整体进度';
 }
@@ -1046,10 +1056,16 @@ function updateTabLabelsForAllProjects() {
 // 更新Tab标签文本 - 项目特定模式
 function updateTabLabelsForProject() {
     const tasksTab = document.getElementById('tasks-tab');
+    const descriptionTab = document.getElementById('description-tab');
     const flowchartTab = document.getElementById('flowchart-tab');
     const progressTab = document.getElementById('progress-tab');
 
     if (tasksTab) tasksTab.innerHTML = '<i class="bi bi-list-task me-2"></i>任务列表';
+    if (descriptionTab) {
+        descriptionTab.style.display = 'block'; // 项目特定模式下显示项目说明Tab
+        descriptionTab.parentElement.style.display = 'block';
+        descriptionTab.innerHTML = '<i class="bi bi-file-text me-2"></i>项目说明';
+    }
     if (flowchartTab) flowchartTab.innerHTML = '<i class="bi bi-diagram-3 me-2"></i>流程图';
     if (progressTab) progressTab.innerHTML = '<i class="bi bi-graph-up me-2"></i>项目进度';
 }
@@ -1588,4 +1604,217 @@ function resetFlowchart() {
 function addMilestone() {
     // 这里可以添加里程碑的逻辑
     alert('添加里程碑功能开发中...');
+}
+
+// ==================== 项目说明功能 ====================
+
+// 更新项目说明Tab
+function updateProjectDescriptionTab() {
+    const project = projects.find(p => p.id === currentSelectedProjectId);
+    if (!project) return;
+
+    // 确保处于预览模式
+    exitEditMode();
+
+    // 更新显示内容
+    updateProjectDescriptionDisplay(project.markdownDescription || '');
+
+    // 同时更新编辑器内容（为编辑模式准备）
+    const editor = document.getElementById('projectDescriptionEditor');
+    if (editor) {
+        editor.value = project.markdownDescription || '';
+    }
+}
+
+// 更新项目说明显示
+function updateProjectDescriptionDisplay(markdownText) {
+    const display = document.getElementById('projectDescriptionDisplay');
+    if (!display) return;
+
+    if (!markdownText.trim()) {
+        display.innerHTML = `
+            <div class="text-center text-muted p-5">
+                <i class="bi bi-file-text fs-1"></i>
+                <h6 class="mt-3">暂无项目说明</h6>
+                <p>点击"编辑"按钮添加项目说明</p>
+            </div>
+        `;
+        return;
+    }
+
+    const htmlContent = convertMarkdownToHTML(markdownText);
+    display.innerHTML = htmlContent;
+}
+
+// 进入编辑模式
+function enterEditMode() {
+    const viewMode = document.getElementById('descriptionViewMode');
+    const editMode = document.getElementById('descriptionEditMode');
+
+    if (viewMode && editMode) {
+        viewMode.style.display = 'none';
+        editMode.style.display = 'block';
+
+        // 设置编辑器内容并聚焦
+        const editor = document.getElementById('projectDescriptionEditor');
+        if (editor) {
+            const project = projects.find(p => p.id === currentSelectedProjectId);
+            editor.value = project?.markdownDescription || '';
+            editor.focus();
+
+            // 添加实时预览
+            editor.addEventListener('input', previewProjectDescription);
+
+            // 初始预览
+            previewProjectDescription();
+        }
+    }
+}
+
+// 退出编辑模式
+function exitEditMode() {
+    const viewMode = document.getElementById('descriptionViewMode');
+    const editMode = document.getElementById('descriptionEditMode');
+
+    if (viewMode && editMode) {
+        viewMode.style.display = 'block';
+        editMode.style.display = 'none';
+
+        // 移除事件监听器
+        const editor = document.getElementById('projectDescriptionEditor');
+        if (editor) {
+            editor.removeEventListener('input', previewProjectDescription);
+        }
+    }
+}
+
+// 取消编辑模式
+function cancelEditMode() {
+    // 恢复原始内容
+    const project = projects.find(p => p.id === currentSelectedProjectId);
+    const editor = document.getElementById('projectDescriptionEditor');
+    if (editor && project) {
+        editor.value = project.markdownDescription || '';
+    }
+
+    exitEditMode();
+}
+
+// 保存项目说明
+async function saveProjectDescription() {
+    if (!currentSelectedProjectId) {
+        showError('请先选择一个项目');
+        return;
+    }
+
+    const editor = document.getElementById('projectDescriptionEditor');
+    if (!editor) return;
+
+    const markdownDescription = editor.value;
+
+    try {
+        const response = await fetch(`/api/projects/${currentSelectedProjectId}/description`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ markdownDescription })
+        });
+
+        if (!response.ok) throw new Error('保存项目说明失败');
+
+        // 更新本地项目数据
+        const project = projects.find(p => p.id === currentSelectedProjectId);
+        if (project) {
+            project.markdownDescription = markdownDescription;
+        }
+
+        showSuccess('项目说明保存成功');
+
+        // 更新预览显示
+        updateProjectDescriptionDisplay(markdownDescription);
+
+        // 退出编辑模式，回到预览模式
+        exitEditMode();
+
+    } catch (error) {
+        console.error('保存项目说明失败:', error);
+        showError('保存项目说明失败，请重试');
+    }
+}
+
+// 预览项目说明（编辑模式下的实时预览）
+function previewProjectDescription() {
+    const editor = document.getElementById('projectDescriptionEditor');
+    const preview = document.getElementById('projectDescriptionPreview');
+
+    if (!editor || !preview) return;
+
+    const markdownText = editor.value;
+
+    if (!markdownText.trim()) {
+        preview.innerHTML = `
+            <div class="text-center text-muted p-5">
+                <i class="bi bi-file-text fs-1"></i>
+                <h6 class="mt-3">项目说明预览</h6>
+                <p>在左侧编辑器中输入内容查看实时预览</p>
+            </div>
+        `;
+        return;
+    }
+
+    // 简单的Markdown转HTML
+    const htmlContent = convertMarkdownToHTML(markdownText);
+    preview.innerHTML = htmlContent;
+}
+
+// 简单的Markdown转HTML转换器
+function convertMarkdownToHTML(markdown) {
+    let html = markdown;
+
+    // 标题转换
+    html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+    html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+    html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+
+    // 粗体和斜体
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+    // 代码块
+    html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+    html = html.replace(/`(.*?)`/g, '<code>$1</code>');
+
+    // 链接
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+
+    // 引用
+    html = html.replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>');
+
+    // 无序列表
+    html = html.replace(/^\- (.*$)/gim, '<li>$1</li>');
+    html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+
+    // 有序列表
+    html = html.replace(/^\d+\. (.*$)/gim, '<li>$1</li>');
+
+    // 水平线
+    html = html.replace(/^---$/gim, '<hr>');
+
+    // 段落
+    html = html.replace(/\n\n/g, '</p><p>');
+    html = '<p>' + html + '</p>';
+
+    // 清理空段落
+    html = html.replace(/<p><\/p>/g, '');
+    html = html.replace(/<p>(<h[1-6]>)/g, '$1');
+    html = html.replace(/(<\/h[1-6]>)<\/p>/g, '$1');
+    html = html.replace(/<p>(<ul>)/g, '$1');
+    html = html.replace(/(<\/ul>)<\/p>/g, '$1');
+    html = html.replace(/<p>(<blockquote>)/g, '$1');
+    html = html.replace(/(<\/blockquote>)<\/p>/g, '$1');
+    html = html.replace(/<p>(<pre>)/g, '$1');
+    html = html.replace(/(<\/pre>)<\/p>/g, '$1');
+    html = html.replace(/<p>(<hr>)/g, '$1');
+    html = html.replace(/(<hr>)<\/p>/g, '$1');
+
+    return html;
 }

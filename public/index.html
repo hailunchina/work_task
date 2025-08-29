@@ -92,6 +92,11 @@
                                     <i class="bi bi-graph-up me-2"></i>项目进度
                                 </button>
                             </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="description-tab" data-bs-toggle="tab" data-bs-target="#description-pane" type="button" role="tab">
+                                    <i class="bi bi-file-text me-2"></i>项目说明
+                                </button>
+                            </li>
                         </ul>
                     </div>
 
@@ -204,6 +209,107 @@
                                 <div class="card-body">
                                     <div id="tasksContainer">
                                         <!-- 任务将在这里动态加载 -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 项目说明Tab -->
+                        <div class="tab-pane fade" id="description-pane" role="tabpanel">
+                            <!-- 预览模式 (默认) -->
+                            <div id="descriptionViewMode">
+                                <div class="card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5 class="mb-0">项目说明</h5>
+                                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="enterEditMode()">
+                                            <i class="bi bi-pencil me-1"></i>编辑
+                                        </button>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="projectDescriptionDisplay" class="markdown-content">
+                                            <div class="text-center text-muted p-5">
+                                                <i class="bi bi-file-text fs-1"></i>
+                                                <h6 class="mt-3">暂无项目说明</h6>
+                                                <p>点击"编辑"按钮添加项目说明</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 编辑模式 (隐藏) -->
+                            <div id="descriptionEditMode" style="display: none;">
+                                <div class="row">
+                                    <!-- Markdown编辑器 -->
+                                    <div class="col-md-6">
+                                        <div class="card">
+                                            <div class="card-header d-flex justify-content-between align-items-center">
+                                                <h5 class="mb-0">编辑项目说明</h5>
+                                                <div class="btn-group" role="group">
+                                                    <button type="button" class="btn btn-success btn-sm" onclick="saveProjectDescription()">
+                                                        <i class="bi bi-save me-1"></i>保存
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="previewProjectDescription()">
+                                                        <i class="bi bi-eye me-1"></i>预览
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="cancelEditMode()">
+                                                        <i class="bi bi-x me-1"></i>取消
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="card-body p-0">
+                                                <textarea id="projectDescriptionEditor" class="form-control border-0" rows="20" placeholder="请输入项目说明，支持Markdown格式...
+
+# 项目标题
+
+## 项目概述
+这里可以描述项目的基本信息...
+
+## 技术栈
+- 前端：HTML, CSS, JavaScript
+- 后端：Node.js, Express
+- 数据库：SQLite
+
+## 项目目标
+1. 目标一
+2. 目标二
+3. 目标三
+
+## 注意事项
+> 这里可以添加重要提醒
+
+```javascript
+// 代码示例
+console.log('Hello World');
+```
+
+[链接示例](https://example.com)"></textarea>
+                                            </div>
+                                            <div class="card-footer">
+                                                <small class="text-muted">
+                                                    <i class="bi bi-info-circle me-1"></i>
+                                                    支持Markdown语法：标题(#)、列表(-)、链接([text](url))、代码块(```)、引用(>)等
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Markdown预览 -->
+                                    <div class="col-md-6">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h5 class="mb-0">实时预览</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <div id="projectDescriptionPreview" class="markdown-content">
+                                                    <div class="text-center text-muted p-5">
+                                                        <i class="bi bi-file-text fs-1"></i>
+                                                        <h6 class="mt-3">项目说明预览</h6>
+                                                        <p>在左侧编辑器中输入内容查看实时预览</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

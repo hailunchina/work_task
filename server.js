@@ -309,6 +309,24 @@ app.get('/api/projects/:id/stats', async (req, res) => {
   }
 });
 
+// 更新项目说明
+app.put('/api/projects/:id/description', async (req, res) => {
+  const { id } = req.params;
+  const { markdownDescription } = req.body;
+
+  try {
+    await TaskDB.updateProjectDescription(id, markdownDescription);
+    res.json({ message: '项目说明更新成功' });
+  } catch (error) {
+    console.error('更新项目说明失败:', error);
+    if (error.message === '项目未找到') {
+      res.status(404).json({ error: '项目未找到' });
+    } else {
+      res.status(500).json({ error: '更新项目说明失败' });
+    }
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`服务器运行在 http://localhost:${PORT}`);
 });

@@ -11,7 +11,50 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container-fluid p-0">
+    <!-- 密码保护遮盖层 -->
+    <div id="passwordOverlay" class="password-overlay">
+        <div class="password-container">
+            <div class="password-card">
+                <div class="password-header">
+                    <i class="bi bi-shield-lock fs-1 text-primary mb-3"></i>
+                    <h3 class="mb-3">工作任务计划表</h3>
+                    <p class="text-muted mb-4">请输入访问密码</p>
+                </div>
+                <div class="password-body">
+                    <form id="passwordForm" onsubmit="checkPassword(event)">
+                        <div class="mb-3">
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="bi bi-key"></i>
+                                </span>
+                                <input type="password" class="form-control form-control-lg" id="passwordInput"
+                                       placeholder="请输入密码" required autocomplete="off">
+                                <button type="button" class="btn btn-outline-secondary" onclick="togglePasswordVisibility()">
+                                    <i class="bi bi-eye" id="passwordToggleIcon"></i>
+                                </button>
+                            </div>
+                            <div id="passwordError" class="text-danger mt-2" style="display: none;">
+                                <i class="bi bi-exclamation-triangle me-1"></i>
+                                密码错误，请重试
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-lg w-100">
+                            <i class="bi bi-unlock me-2"></i>进入系统
+                        </button>
+                    </form>
+                </div>
+                <div class="password-footer">
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                        请联系管理员获取访问密码
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主应用内容 -->
+    <div id="mainApp" class="container-fluid p-0" style="display: none;">
         <!-- 导航栏 -->
         <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-0">
             <div class="container-fluid">
@@ -31,6 +74,24 @@
                         <i class="bi bi-gear me-1"></i>
                         WebHook设置
                     </button>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle me-1"></i>系统
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <a class="dropdown-item" href="#" onclick="logout()">
+                                    <i class="bi bi-box-arrow-right me-2"></i>退出登录
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <span class="dropdown-item-text text-muted">
+                                    <i class="bi bi-info-circle me-2"></i>快捷键: Ctrl+Shift+L
+                                </span>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
             </div>
         </nav>

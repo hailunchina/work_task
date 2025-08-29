@@ -44,7 +44,48 @@ npm run dev
 
 ### 3. 访问应用
 
-打开浏览器访问: http://localhost:3000
+打开浏览器访问: http://localhost:8765
+
+## 打包为可执行文件
+
+本项目支持使用 pkg 打包为独立的可执行文件，无需安装 Node.js 即可运行。
+
+### 安装 pkg
+```bash
+npm install -g pkg
+```
+
+### 打包命令
+
+#### 打包为 Windows 可执行文件
+```bash
+npm run build-win
+```
+
+#### 打包为多平台可执行文件
+```bash
+npm run build-all
+```
+
+打包后的文件将在 `dist` 目录中：
+- `task-manager.exe` (Windows)
+- `task-manager-macos` (macOS)
+- `task-manager-linux` (Linux)
+
+### 使用可执行文件
+
+1. 运行对应平台的可执行文件
+2. 程序会自动在当前目录创建 `data` 文件夹存储数据库
+3. 打开浏览器访问 `http://localhost:8765`
+4. 数据库文件位于 `data/tasks.db`
+
+### 打包配置
+
+项目已配置好 pkg 打包设置：
+- 包含所有静态资源文件
+- 包含 SQLite 二进制文件
+- 支持多平台打包
+- 自动处理数据库路径
 
 ## 项目结构
 

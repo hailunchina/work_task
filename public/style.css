@@ -856,3 +856,166 @@ body {
 #descriptionEditMode .card-header {
     background-color: #f8f9fa;
 }
+
+/* 密码保护遮盖层样式 */
+.password-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+.password-container {
+    width: 100%;
+    max-width: 400px;
+    padding: 20px;
+}
+
+.password-card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    animation: slideUp 0.6s ease-out;
+}
+
+.password-header {
+    text-align: center;
+    padding: 40px 30px 20px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+.password-body {
+    padding: 30px;
+}
+
+.password-footer {
+    text-align: center;
+    padding: 20px 30px 30px;
+    background-color: #f8f9fa;
+}
+
+.password-card .form-control-lg {
+    border-radius: 10px;
+    border: 2px solid #e9ecef;
+    padding: 15px 20px;
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.password-card .form-control-lg:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    transform: translateY(-2px);
+}
+
+.password-card .input-group-text {
+    border-radius: 10px 0 0 10px;
+    border: 2px solid #e9ecef;
+    border-right: none;
+    background-color: #f8f9fa;
+    padding: 15px 15px;
+}
+
+.password-card .btn-outline-secondary {
+    border-radius: 0 10px 10px 0;
+    border: 2px solid #e9ecef;
+    border-left: none;
+    padding: 15px 15px;
+}
+
+.password-card .btn-primary {
+    border-radius: 10px;
+    padding: 15px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
+}
+
+.password-card .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 123, 255, 0.3);
+}
+
+/* 密码错误动画 */
+.password-error-shake {
+    animation: shake 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes shake {
+    0%, 100% {
+        transform: translateX(0);
+    }
+    25% {
+        transform: translateX(-10px);
+    }
+    75% {
+        transform: translateX(10px);
+    }
+}
+
+/* 成功进入动画 */
+.password-success {
+    animation: successFade 0.8s ease-out forwards;
+}
+
+@keyframes successFade {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .password-container {
+        padding: 15px;
+    }
+
+    .password-header {
+        padding: 30px 20px 15px;
+    }
+
+    .password-body {
+        padding: 20px;
+    }
+
+    .password-footer {
+        padding: 15px 20px 20px;
+    }
+}

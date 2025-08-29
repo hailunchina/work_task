@@ -7,12 +7,14 @@ let currentSelectedProjectId = '';
 let taskToDelete = null;
 let projectToDelete = null;
 
+// 密码保护配置
+const APP_PASSWORD = 'admin123'; // 内置密码，可以修改
+let isAuthenticated = false;
+
 // DOM 加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
-    loadProjects();
-    loadTasks();
-    setupEventListeners();
-    loadSettings();
+    // 检查是否已经通过密码验证
+    checkAuthenticationStatus();
 });
 
 // 设置事件监听器
@@ -1818,3 +1820,215 @@ function convertMarkdownToHTML(markdown) {
 
     return html;
 }
+
+// ==================== 密码保护功能 ====================
+
+// 检查认证状态
+async function checkAuthenticationStatus() {
+    try {
+        // 获取应用配置
+        const response = await fetch('/api/config');
+        appConfig = await response.json();
+
+        // 如果密码保护被禁用，直接显示主应用
+        if (!appConfig.security.enabled) {
+            isAuthenticated = true;
+            showMainApp();
+            return;
+        }
+
+        // 检查sessionStorage中是否有认证标记
+        const authToken = sessionStorage.getItem('taskManagerAuth');
+        const authTime = sessionStorage.getItem('taskManagerAuthTime');
+
+        if (authToken === 'authenticated' && authTime) {
+            const currentTime = new Date().getTime();
+            const authTimeStamp = parseInt(authTime);
+
+            // 检查认证是否在配置的时间内有效
+            const sessionDuration = appConfig.security.sessionDuration * 60 * 60 * 1000; // 转换为毫秒
+            if (currentTime - authTimeStamp < sessionDuration) {
+                isAuthenticated = true;
+                showMainApp();
+                return;
+            }
+        }
+
+        // 如果没有有效认证，显示密码输入界面
+        showPasswordOverlay();
+
+    } catch (error) {
+        console.error('获取配置失败:', error);
+        // 如果无法获取配置，默认显示密码输入界面
+        showPasswordOverlay();
+    }
+}
+
+// 显示密码输入界面
+function showPasswordOverlay() {
+    const overlay = document.getElementById('passwordOverlay');
+    const mainApp = document.getElementById('mainApp');
+
+    if (overlay && mainApp) {
+        overlay.style.display = 'flex';
+        mainApp.style.display = 'none';
+
+        // 聚焦到密码输入框
+        setTimeout(() => {
+            const passwordInput = document.getElementById('passwordInput');
+            if (passwordInput) {
+                passwordInput.focus();
+            }
+        }, 100);
+    }
+}
+
+// 显示主应用
+function showMainApp() {
+    const overlay = document.getElementById('passwordOverlay');
+    const mainApp = document.getElementById('mainApp');
+
+    if (overlay && mainApp) {
+        overlay.style.display = 'none';
+        mainApp.style.display = 'block';
+
+        // 初始化应用
+        initializeApp();
+    }
+}
+
+// 初始化应用
+function initializeApp() {
+    loadProjects();
+    loadTasks();
+    setupEventListeners();
+    loadSettings();
+}
+
+// 检查密码
+async function checkPassword(event) {
+    event.preventDefault();
+
+    const passwordInput = document.getElementById('passwordInput');
+    const passwordError = document.getElementById('passwordError');
+    const passwordCard = document.querySelector('.password-card');
+    const submitButton = event.target.querySelector('button[type="submit"]');
+
+    if (!passwordInput || !passwordError || !passwordCard || !submitButton) return;
+
+    const enteredPassword = passwordInput.value.trim();
+
+    // 显示加载状态
+    const originalButtonText = submitButton.innerHTML;
+    submitButton.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>验证中...';
+    submitButton.disabled = true;
+
+    try {
+        // 向服务器验证密码
+        const response = await fetch('/api/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: enteredPassword })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // 密码正确
+            isAuthenticated = true;
+
+            // 保存认证状态到sessionStorage
+            sessionStorage.setItem('taskManagerAuth', 'authenticated');
+            sessionStorage.setItem('taskManagerAuthTime', new Date().getTime().toString());
+
+            // 隐藏错误信息
+            passwordError.style.display = 'none';
+
+            // 添加成功动画
+            const overlay = document.getElementById('passwordOverlay');
+            if (overlay) {
+                overlay.classList.add('password-success');
+
+                setTimeout(() => {
+                    showMainApp();
+                }, 800);
+            }
+
+        } else {
+            // 密码错误
+            passwordError.style.display = 'block';
+            passwordCard.classList.add('password-error-shake');
+            passwordInput.value = '';
+            passwordInput.focus();
+
+            // 移除震动动画
+            setTimeout(() => {
+                passwordCard.classList.remove('password-error-shake');
+            }, 500);
+        }
+
+    } catch (error) {
+        console.error('密码验证失败:', error);
+        passwordError.innerHTML = '<i class="bi bi-exclamation-triangle me-1"></i>网络错误，请重试';
+        passwordError.style.display = 'block';
+        passwordCard.classList.add('password-error-shake');
+
+        setTimeout(() => {
+            passwordCard.classList.remove('password-error-shake');
+        }, 500);
+
+    } finally {
+        // 恢复按钮状态
+        submitButton.innerHTML = originalButtonText;
+        submitButton.disabled = false;
+    }
+}
+
+// 切换密码可见性
+function togglePasswordVisibility() {
+    const passwordInput = document.getElementById('passwordInput');
+    const toggleIcon = document.getElementById('passwordToggleIcon');
+
+    if (!passwordInput || !toggleIcon) return;
+
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleIcon.className = 'bi bi-eye-slash';
+    } else {
+        passwordInput.type = 'password';
+        toggleIcon.className = 'bi bi-eye';
+    }
+}
+
+// 退出登录
+function logout() {
+    // 清除认证状态
+    sessionStorage.removeItem('taskManagerAuth');
+    sessionStorage.removeItem('taskManagerAuthTime');
+    isAuthenticated = false;
+
+    // 显示密码输入界面
+    showPasswordOverlay();
+
+    showSuccess('已安全退出系统');
+}
+
+// 键盘事件处理
+document.addEventListener('keydown', function(event) {
+    // 在密码输入界面按ESC键清空输入
+    if (!isAuthenticated && event.key === 'Escape') {
+        const passwordInput = document.getElementById('passwordInput');
+        if (passwordInput) {
+            passwordInput.value = '';
+            passwordInput.focus();
+        }
+    }
+
+    // 在主应用中按Ctrl+Shift+L退出登录
+    if (isAuthenticated && event.ctrlKey && event.shiftKey && event.key === 'L') {
+        event.preventDefault();
+        if (confirm('确定要退出登录吗？')) {
+            logout();
+        }
+    }
+});

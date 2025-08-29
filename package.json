@@ -2,10 +2,14 @@
   "name": "task-planner",
   "version": "1.0.0",
   "description": "A modern task planner application with Node.js and Bootstrap v5",
-  "main": "server.js",
+  "main": "start.js",
+  "bin": "start.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "build": "pkg . --out-path dist",
+    "build-win": "pkg . --targets node16-win-x64 --out-path dist",
+    "build-all": "pkg . --targets node16-win-x64,node16-macos-x64,node16-linux-x64 --out-path dist"
   },
   "dependencies": {
     "body-parser": "^1.20.2",
@@ -16,6 +20,16 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
+  },
+  "pkg": {
+    "assets": [
+      "public/**/*",
+      "node_modules/sqlite3/lib/binding/**/*"
+    ],
+    "targets": [
+      "node16-win-x64"
+    ],
+    "outputPath": "dist"
   },
   "keywords": [
     "task",

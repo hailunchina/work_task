@@ -3,9 +3,10 @@ const bodyParser = require('body-parser');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const TaskDB = require('./database');
+const config = require('./config');
 
 const app = express();
-const PORT = process.env.PORT || 8765;
+const PORT = config.server.port;
 
 // 中间件
 app.use(bodyParser.json());
@@ -15,6 +16,32 @@ app.use(express.static('public'));
 // 路由
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// 获取安全配置（不包含密码）
+app.get('/api/config', (req, res) => {
+  res.json({
+    security: {
+      enabled: config.security.enabled,
+      sessionDuration: config.security.sessionDuration
+    },
+    app: config.app
+  });
+});
+
+// 验证密码
+app.post('/api/auth', (req, res) => {
+  const { password } = req.body;
+
+  if (!config.security.enabled) {
+    return res.json({ success: true, message: '密码保护已禁用' });
+  }
+
+  if (password === config.security.password) {
+    res.json({ success: true, message: '密码验证成功' });
+  } else {
+    res.status(401).json({ success: false, message: '密码错误' });
+  }
 });
 
 // 获取所有任务

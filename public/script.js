@@ -42,6 +42,12 @@ async function loadTasks() {
         tasks = await response.json();
         renderTasks(tasks);
         updateStatistics();
+
+        // 如果已经选择了项目，更新Tab内容
+        if (currentSelectedProjectId !== undefined) {
+            updateFlowchartTab();
+            updateProgressTab();
+        }
     } catch (error) {
         console.error('加载任务失败:', error);
         showError('加载任务失败，请刷新页面重试');
@@ -743,11 +749,9 @@ function selectProject(projectId) {
     // 筛选并显示任务
     filterTasksByProject();
 
-    // 如果选择了具体项目，更新其他Tab的内容
-    if (projectId !== '') {
-        updateFlowchartTab();
-        updateProgressTab();
-    }
+    // 更新Tab内容（无论是全部项目还是具体项目）
+    updateFlowchartTab();
+    updateProgressTab();
 }
 
 // 根据项目筛选任务
@@ -1101,6 +1105,8 @@ function updateProjectOverview() {
     const container = document.getElementById('flowchartContainer');
     if (!container) return;
 
+    console.log('更新项目概览 - 项目数量:', projects.length, '任务数量:', tasks.length);
+
     if (projects.length === 0) {
         container.innerHTML = `
             <div class="text-center text-muted p-5">
@@ -1112,8 +1118,10 @@ function updateProjectOverview() {
         return;
     }
 
-    // 显示所有项目的概览卡片
+    // 显示所有项目的概览卡片，包括无项目的任务
     let overviewHTML = '<div class="row p-3">';
+
+    // 显示所有已创建的项目
     projects.forEach(project => {
         const projectTasks = tasks.filter(task => task.projectId === project.id);
         const total = projectTasks.length;
@@ -1121,6 +1129,8 @@ function updateProjectOverview() {
         const inProgress = projectTasks.filter(t => t.status === 'in-progress').length;
         const pending = projectTasks.filter(t => t.status === 'pending').length;
         const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+        console.log(`项目 ${project.name}: 总任务=${total}, 已完成=${completed}, 进行中=${inProgress}, 待处理=${pending}`);
 
         overviewHTML += `
             <div class="col-md-4 mb-3">
@@ -1156,12 +1166,106 @@ function updateProjectOverview() {
                                 <div class="small text-muted">已完成</div>
                             </div>
                         </div>
+
+                        <div class="mt-2">
+                            <button class="btn btn-outline-primary btn-sm w-100" onclick="selectProject('${project.id}')">
+                                查看详情
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
         `;
     });
+
+    // 显示无项目归属的任务
+    const unassignedTasks = tasks.filter(task => !task.projectId || task.projectId === '');
+    if (unassignedTasks.length > 0) {
+        const total = unassignedTasks.length;
+        const completed = unassignedTasks.filter(t => t.status === 'completed').length;
+        const inProgress = unassignedTasks.filter(t => t.status === 'in-progress').length;
+        const pending = unassignedTasks.filter(t => t.status === 'pending').length;
+        const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+        console.log(`无项目任务: 总任务=${total}, 已完成=${completed}, 进行中=${inProgress}, 待处理=${pending}`);
+
+        overviewHTML += `
+            <div class="col-md-4 mb-3">
+                <div class="card h-100" style="border-left: 4px solid #6c757d;">
+                    <div class="card-body">
+                        <h6 class="card-title d-flex align-items-center">
+                            <div class="project-color me-2" style="background-color: #6c757d;"></div>
+                            无项目任务
+                        </h6>
+                        <p class="card-text text-muted small">未分配到具体项目的任务</p>
+
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between mb-1">
+                                <small>进度</small>
+                                <small>${progress}%</small>
+                            </div>
+                            <div class="progress" style="height: 6px;">
+                                <div class="progress-bar" style="width: ${progress}%; background-color: #6c757d;"></div>
+                            </div>
+                        </div>
+
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <small class="text-warning">${pending}</small>
+                                <div class="small text-muted">待处理</div>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-info">${inProgress}</small>
+                                <div class="small text-muted">进行中</div>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-success">${completed}</small>
+                                <div class="small text-muted">已完成</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
     overviewHTML += '</div>';
+
+    // 添加整体统计
+    const totalTasks = tasks.length;
+    const totalProjects = projects.length;
+    const totalCompleted = tasks.filter(t => t.status === 'completed').length;
+    const overallProgress = totalTasks > 0 ? Math.round((totalCompleted / totalTasks) * 100) : 0;
+
+    overviewHTML += `
+        <div class="row p-3 mt-3">
+            <div class="col-12">
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <h6 class="card-title">整体统计</h6>
+                        <div class="row text-center">
+                            <div class="col-3">
+                                <h4 class="text-primary">${totalProjects}</h4>
+                                <small class="text-muted">项目总数</small>
+                            </div>
+                            <div class="col-3">
+                                <h4 class="text-info">${totalTasks}</h4>
+                                <small class="text-muted">任务总数</small>
+                            </div>
+                            <div class="col-3">
+                                <h4 class="text-success">${totalCompleted}</h4>
+                                <small class="text-muted">已完成</small>
+                            </div>
+                            <div class="col-3">
+                                <h4 class="text-warning">${overallProgress}%</h4>
+                                <small class="text-muted">整体进度</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
 
     container.innerHTML = overviewHTML;
 }
@@ -1203,20 +1307,30 @@ function updateProgressTab() {
 
 // 更新整体进度（全部项目模式）
 function updateOverallProgress() {
+    console.log('更新整体进度 - 任务数量:', tasks.length);
+
     // 计算所有任务的统计
     const total = tasks.length;
     const pending = tasks.filter(t => t.status === 'pending').length;
     const inProgress = tasks.filter(t => t.status === 'in-progress').length;
     const completed = tasks.filter(t => t.status === 'completed').length;
 
+    console.log(`整体统计: 总计=${total}, 待处理=${pending}, 进行中=${inProgress}, 已完成=${completed}`);
+
     const progressPercentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
     // 更新进度条和数字
-    document.getElementById('overallProgress').textContent = `${progressPercentage}%`;
-    document.getElementById('overallProgressBar').style.width = `${progressPercentage}%`;
-    document.getElementById('progressPending').textContent = pending;
-    document.getElementById('progressInProgress').textContent = inProgress;
-    document.getElementById('progressCompleted').textContent = completed;
+    const overallProgressElement = document.getElementById('overallProgress');
+    const overallProgressBarElement = document.getElementById('overallProgressBar');
+    const progressPendingElement = document.getElementById('progressPending');
+    const progressInProgressElement = document.getElementById('progressInProgress');
+    const progressCompletedElement = document.getElementById('progressCompleted');
+
+    if (overallProgressElement) overallProgressElement.textContent = `${progressPercentage}%`;
+    if (overallProgressBarElement) overallProgressBarElement.style.width = `${progressPercentage}%`;
+    if (progressPendingElement) progressPendingElement.textContent = pending;
+    if (progressInProgressElement) progressInProgressElement.textContent = inProgress;
+    if (progressCompletedElement) progressCompletedElement.textContent = completed;
 
     // 更新时间线 - 显示所有任务
     updateProjectTimeline(tasks);
@@ -1230,6 +1344,8 @@ function updateProjectTimeline(projectTasks) {
     const container = document.getElementById('projectTimeline');
     if (!container) return;
 
+    console.log('更新时间线 - 任务数量:', projectTasks.length);
+
     if (projectTasks.length === 0) {
         container.innerHTML = `
             <div class="text-center text-muted p-3">
@@ -1240,23 +1356,41 @@ function updateProjectTimeline(projectTasks) {
         return;
     }
 
-    // 按创建时间排序
-    const sortedTasks = [...projectTasks].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    // 按创建时间排序，只显示最近的10个任务
+    const sortedTasks = [...projectTasks]
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, 10);
 
     let timelineHTML = '<div class="timeline">';
     sortedTasks.forEach(task => {
         const statusClass = task.status === 'completed' ? 'completed' :
                            task.status === 'in-progress' ? 'in-progress' : 'pending';
 
+        // 获取项目信息
+        const project = projects.find(p => p.id === task.projectId);
+        const projectName = project ? project.name : '无项目';
+
         timelineHTML += `
             <div class="timeline-item ${statusClass}">
                 <div class="fw-bold">${escapeHtml(task.title)}</div>
+                <div class="text-muted small mb-1">${escapeHtml(projectName)}</div>
                 <small class="text-muted">
                     ${new Date(task.createdAt).toLocaleDateString()} - ${getStatusText(task.status)}
                 </small>
             </div>
         `;
     });
+
+    if (projectTasks.length > 10) {
+        timelineHTML += `
+            <div class="timeline-item">
+                <div class="text-muted small">
+                    还有 ${projectTasks.length - 10} 个任务...
+                </div>
+            </div>
+        `;
+    }
+
     timelineHTML += '</div>';
 
     container.innerHTML = timelineHTML;

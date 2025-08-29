@@ -74,111 +74,243 @@
                         </div>
                     </div>
 
-                    <!-- 统计卡片 -->
-                    <div class="row mb-4">
-                        <div class="col-md-3">
-                            <div class="card bg-primary text-white">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between">
-                                        <div>
-                                            <h6 class="card-title">总任务</h6>
-                                            <h3 id="totalTasks">0</h3>
-                                        </div>
-                                        <i class="bi bi-list-task fs-1"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card bg-warning text-white">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between">
-                                        <div>
-                                            <h6 class="card-title">待处理</h6>
-                                            <h3 id="pendingTasks">0</h3>
-                                        </div>
-                                        <i class="bi bi-clock fs-1"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card bg-info text-white">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between">
-                                        <div>
-                                            <h6 class="card-title">进行中</h6>
-                                            <h3 id="inProgressTasks">0</h3>
-                                        </div>
-                                        <i class="bi bi-arrow-repeat fs-1"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card bg-success text-white">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between">
-                                        <div>
-                                            <h6 class="card-title">已完成</h6>
-                                            <h3 id="completedTasks">0</h3>
-                                        </div>
-                                        <i class="bi bi-check-circle fs-1"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                    <!-- 项目Tab标签 (仅在选择具体项目时显示) -->
+                    <div id="projectTabsContainer" style="display: none;">
+                        <ul class="nav nav-tabs mb-4" id="projectTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="tasks-tab" data-bs-toggle="tab" data-bs-target="#tasks-pane" type="button" role="tab">
+                                    <i class="bi bi-list-task me-2"></i>任务列表
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="flowchart-tab" data-bs-toggle="tab" data-bs-target="#flowchart-pane" type="button" role="tab">
+                                    <i class="bi bi-diagram-3 me-2"></i>流程图
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="progress-tab" data-bs-toggle="tab" data-bs-target="#progress-pane" type="button" role="tab">
+                                    <i class="bi bi-graph-up me-2"></i>项目进度
+                                </button>
+                            </li>
+                        </ul>
                     </div>
 
-            <!-- 筛选和搜索 -->
-            <div class="row mb-3">
-                <div class="col-md-4">
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="bi bi-search"></i></span>
-                        <input type="text" class="form-control" id="searchInput" placeholder="搜索任务...">
-                    </div>
-                </div>
-                <div class="col-md-2">
-                    <select class="form-select" id="statusFilter">
-                        <option value="">所有状态</option>
-                        <option value="pending">待处理</option>
-                        <option value="in-progress">进行中</option>
-                        <option value="completed">已完成</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <select class="form-select" id="priorityFilter">
-                        <option value="">所有优先级</option>
-                        <option value="high">高</option>
-                        <option value="medium">中</option>
-                        <option value="low">低</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <select class="form-select" id="timeFilter">
-                        <option value="">所有时间</option>
-                        <option value="today">今天</option>
-                        <option value="week">本周</option>
-                        <option value="month">本月</option>
-                        <option value="overdue">已逾期</option>
-                        <option value="upcoming">即将到期</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <button class="btn btn-outline-secondary w-100" onclick="clearAllFilters()" title="清除所有筛选">
-                        <i class="bi bi-arrow-clockwise me-1"></i>重置
-                    </button>
-                </div>
-            </div>
+                    <!-- Tab内容区域 -->
+                    <div class="tab-content" id="projectTabContent">
+                        <!-- 任务列表Tab -->
+                        <div class="tab-pane fade show active" id="tasks-pane" role="tabpanel">
+                            <!-- 统计卡片 -->
+                            <div class="row mb-4">
+                                <div class="col-md-3">
+                                    <div class="card bg-primary text-white">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between">
+                                                <div>
+                                                    <h6 class="card-title">总任务</h6>
+                                                    <h3 id="totalTasks">0</h3>
+                                                </div>
+                                                <i class="bi bi-list-task fs-1"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card bg-warning text-white">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between">
+                                                <div>
+                                                    <h6 class="card-title">待处理</h6>
+                                                    <h3 id="pendingTasks">0</h3>
+                                                </div>
+                                                <i class="bi bi-clock fs-1"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card bg-info text-white">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between">
+                                                <div>
+                                                    <h6 class="card-title">进行中</h6>
+                                                    <h3 id="inProgressTasks">0</h3>
+                                                </div>
+                                                <i class="bi bi-arrow-repeat fs-1"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card bg-success text-white">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between">
+                                                <div>
+                                                    <h6 class="card-title">已完成</h6>
+                                                    <h3 id="completedTasks">0</h3>
+                                                </div>
+                                                <i class="bi bi-check-circle fs-1"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
-                    <!-- 任务列表 -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="mb-0">任务列表</h5>
+                            <!-- 筛选和搜索 -->
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                        <input type="text" class="form-control" id="searchInput" placeholder="搜索任务...">
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <select class="form-select" id="statusFilter">
+                                        <option value="">所有状态</option>
+                                        <option value="pending">待处理</option>
+                                        <option value="in-progress">进行中</option>
+                                        <option value="completed">已完成</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <select class="form-select" id="priorityFilter">
+                                        <option value="">所有优先级</option>
+                                        <option value="high">高</option>
+                                        <option value="medium">中</option>
+                                        <option value="low">低</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <select class="form-select" id="timeFilter">
+                                        <option value="">所有时间</option>
+                                        <option value="today">今天</option>
+                                        <option value="week">本周</option>
+                                        <option value="month">本月</option>
+                                        <option value="overdue">已逾期</option>
+                                        <option value="upcoming">即将到期</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <button class="btn btn-outline-secondary w-100" onclick="clearAllFilters()" title="清除所有筛选">
+                                        <i class="bi bi-arrow-clockwise me-1"></i>重置
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- 任务列表 -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">任务列表</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="tasksContainer">
+                                        <!-- 任务将在这里动态加载 -->
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="card-body">
-                            <div id="tasksContainer">
-                                <!-- 任务将在这里动态加载 -->
+
+                        <!-- 流程图Tab -->
+                        <div class="tab-pane fade" id="flowchart-pane" role="tabpanel">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0">项目流程图</h5>
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="addFlowchartNode()">
+                                            <i class="bi bi-plus-circle me-1"></i>添加节点
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="resetFlowchart()">
+                                            <i class="bi bi-arrow-clockwise me-1"></i>重置
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div id="flowchartContainer" class="flowchart-container">
+                                        <!-- 流程图将在这里渲染 -->
+                                        <div class="text-center text-muted p-5">
+                                            <i class="bi bi-diagram-3 fs-1"></i>
+                                            <h6 class="mt-3">项目流程图</h6>
+                                            <p>点击"添加节点"开始创建项目流程</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 项目进度Tab -->
+                        <div class="tab-pane fade" id="progress-pane" role="tabpanel">
+                            <div class="row">
+                                <!-- 进度概览 -->
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h5 class="mb-0">项目进度概览</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="mb-3">
+                                                <div class="d-flex justify-content-between mb-1">
+                                                    <span>总体进度</span>
+                                                    <span id="overallProgress">0%</span>
+                                                </div>
+                                                <div class="progress">
+                                                    <div class="progress-bar" id="overallProgressBar" role="progressbar" style="width: 0%"></div>
+                                                </div>
+                                            </div>
+                                            <div class="row text-center">
+                                                <div class="col-4">
+                                                    <div class="border rounded p-2">
+                                                        <h6 class="text-muted mb-1">待处理</h6>
+                                                        <h4 class="text-warning" id="progressPending">0</h4>
+                                                    </div>
+                                                </div>
+                                                <div class="col-4">
+                                                    <div class="border rounded p-2">
+                                                        <h6 class="text-muted mb-1">进行中</h6>
+                                                        <h4 class="text-info" id="progressInProgress">0</h4>
+                                                    </div>
+                                                </div>
+                                                <div class="col-4">
+                                                    <div class="border rounded p-2">
+                                                        <h6 class="text-muted mb-1">已完成</h6>
+                                                        <h4 class="text-success" id="progressCompleted">0</h4>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 时间线 -->
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h5 class="mb-0">项目时间线</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="projectTimeline">
+                                                <!-- 时间线将在这里渲染 -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 里程碑 -->
+                            <div class="row mt-4">
+                                <div class="col-12">
+                                    <div class="card">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-0">项目里程碑</h5>
+                                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="addMilestone()">
+                                                <i class="bi bi-flag me-1"></i>添加里程碑
+                                            </button>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="milestonesContainer">
+                                                <!-- 里程碑将在这里渲染 -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

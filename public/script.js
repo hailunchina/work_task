@@ -717,8 +717,37 @@ function selectProject(projectId) {
         }
     }
 
+    // 显示/隐藏Tab容器
+    const tabsContainer = document.getElementById('projectTabsContainer');
+    const tabContent = document.getElementById('projectTabContent');
+    if (tabsContainer && tabContent) {
+        if (projectId === '') {
+            // 显示全部项目时也显示Tab，但内容稍有不同
+            tabsContainer.style.display = 'block';
+            tabContent.style.display = 'block';
+            // 默认激活任务列表Tab
+            activateTab('tasks-tab');
+            // 更新Tab标签文本以反映"全部项目"状态
+            updateTabLabelsForAllProjects();
+        } else {
+            // 选择具体项目时显示Tab
+            tabsContainer.style.display = 'block';
+            tabContent.style.display = 'block';
+            // 默认激活任务列表Tab
+            activateTab('tasks-tab');
+            // 恢复Tab标签文本为项目特定状态
+            updateTabLabelsForProject();
+        }
+    }
+
     // 筛选并显示任务
     filterTasksByProject();
+
+    // 如果选择了具体项目，更新其他Tab的内容
+    if (projectId !== '') {
+        updateFlowchartTab();
+        updateProgressTab();
+    }
 }
 
 // 根据项目筛选任务
@@ -975,4 +1004,454 @@ async function confirmDeleteProject() {
     } finally {
         projectToDelete = null;
     }
+}
+
+// ==================== Tab功能 ====================
+
+// 激活指定的Tab
+function activateTab(tabId) {
+    // 移除所有Tab的active状态
+    document.querySelectorAll('.nav-link').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.querySelectorAll('.tab-pane').forEach(pane => {
+        pane.classList.remove('show', 'active');
+    });
+
+    // 激活指定的Tab
+    const targetTab = document.getElementById(tabId);
+    const targetPane = document.querySelector(targetTab.getAttribute('data-bs-target'));
+
+    if (targetTab && targetPane) {
+        targetTab.classList.add('active');
+        targetPane.classList.add('show', 'active');
+    }
+}
+
+// 更新Tab标签文本 - 全部项目模式
+function updateTabLabelsForAllProjects() {
+    const tasksTab = document.getElementById('tasks-tab');
+    const flowchartTab = document.getElementById('flowchart-tab');
+    const progressTab = document.getElementById('progress-tab');
+
+    if (tasksTab) tasksTab.innerHTML = '<i class="bi bi-list-task me-2"></i>全部任务';
+    if (flowchartTab) flowchartTab.innerHTML = '<i class="bi bi-diagram-3 me-2"></i>项目概览';
+    if (progressTab) progressTab.innerHTML = '<i class="bi bi-graph-up me-2"></i>整体进度';
+}
+
+// 更新Tab标签文本 - 项目特定模式
+function updateTabLabelsForProject() {
+    const tasksTab = document.getElementById('tasks-tab');
+    const flowchartTab = document.getElementById('flowchart-tab');
+    const progressTab = document.getElementById('progress-tab');
+
+    if (tasksTab) tasksTab.innerHTML = '<i class="bi bi-list-task me-2"></i>任务列表';
+    if (flowchartTab) flowchartTab.innerHTML = '<i class="bi bi-diagram-3 me-2"></i>流程图';
+    if (progressTab) progressTab.innerHTML = '<i class="bi bi-graph-up me-2"></i>项目进度';
+}
+
+// 更新流程图Tab
+function updateFlowchartTab() {
+    const container = document.getElementById('flowchartContainer');
+    if (!container) return;
+
+    if (currentSelectedProjectId === '') {
+        // 全部项目模式 - 显示项目概览
+        updateProjectOverview();
+        return;
+    }
+
+    const project = projects.find(p => p.id === currentSelectedProjectId);
+    if (!project) return;
+
+    // 这里可以根据项目任务生成基本的流程图
+    const projectTasks = tasks.filter(task => task.projectId === currentSelectedProjectId);
+
+    if (projectTasks.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-muted p-5">
+                <i class="bi bi-diagram-3 fs-1"></i>
+                <h6 class="mt-3">项目流程图</h6>
+                <p>该项目暂无任务，请先添加任务</p>
+            </div>
+        `;
+        return;
+    }
+
+    // 简单的流程图展示
+    let flowchartHTML = '<div class="p-3">';
+    projectTasks.forEach((task, index) => {
+        const statusColor = task.status === 'completed' ? '#28a745' :
+                           task.status === 'in-progress' ? '#007bff' : '#ffc107';
+
+        flowchartHTML += `
+            <div class="flowchart-node" style="left: ${50 + (index % 3) * 200}px; top: ${50 + Math.floor(index / 3) * 100}px; border-color: ${statusColor};">
+                <div class="fw-bold">${escapeHtml(task.title)}</div>
+                <small class="text-muted">${getStatusText(task.status)}</small>
+            </div>
+        `;
+    });
+    flowchartHTML += '</div>';
+
+    container.innerHTML = flowchartHTML;
+}
+
+// 更新项目概览（全部项目模式下的流程图Tab内容）
+function updateProjectOverview() {
+    const container = document.getElementById('flowchartContainer');
+    if (!container) return;
+
+    if (projects.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-muted p-5">
+                <i class="bi bi-folder-x fs-1"></i>
+                <h6 class="mt-3">项目概览</h6>
+                <p>暂无项目，请先创建项目</p>
+            </div>
+        `;
+        return;
+    }
+
+    // 显示所有项目的概览卡片
+    let overviewHTML = '<div class="row p-3">';
+    projects.forEach(project => {
+        const projectTasks = tasks.filter(task => task.projectId === project.id);
+        const total = projectTasks.length;
+        const completed = projectTasks.filter(t => t.status === 'completed').length;
+        const inProgress = projectTasks.filter(t => t.status === 'in-progress').length;
+        const pending = projectTasks.filter(t => t.status === 'pending').length;
+        const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+        overviewHTML += `
+            <div class="col-md-4 mb-3">
+                <div class="card h-100" style="border-left: 4px solid ${project.color};">
+                    <div class="card-body">
+                        <h6 class="card-title d-flex align-items-center">
+                            <div class="project-color me-2" style="background-color: ${project.color};"></div>
+                            ${escapeHtml(project.name)}
+                        </h6>
+                        <p class="card-text text-muted small">${escapeHtml(project.description || '无描述')}</p>
+
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between mb-1">
+                                <small>进度</small>
+                                <small>${progress}%</small>
+                            </div>
+                            <div class="progress" style="height: 6px;">
+                                <div class="progress-bar" style="width: ${progress}%; background-color: ${project.color};"></div>
+                            </div>
+                        </div>
+
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <small class="text-warning">${pending}</small>
+                                <div class="small text-muted">待处理</div>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-info">${inProgress}</small>
+                                <div class="small text-muted">进行中</div>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-success">${completed}</small>
+                                <div class="small text-muted">已完成</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    overviewHTML += '</div>';
+
+    container.innerHTML = overviewHTML;
+}
+
+// 更新进度Tab
+function updateProgressTab() {
+    if (currentSelectedProjectId === '') {
+        // 全部项目模式 - 显示整体进度
+        updateOverallProgress();
+        return;
+    }
+
+    const project = projects.find(p => p.id === currentSelectedProjectId);
+    if (!project) return;
+
+    const projectTasks = tasks.filter(task => task.projectId === currentSelectedProjectId);
+
+    // 更新进度统计
+    const total = projectTasks.length;
+    const pending = projectTasks.filter(t => t.status === 'pending').length;
+    const inProgress = projectTasks.filter(t => t.status === 'in-progress').length;
+    const completed = projectTasks.filter(t => t.status === 'completed').length;
+
+    const progressPercentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    // 更新进度条和数字
+    document.getElementById('overallProgress').textContent = `${progressPercentage}%`;
+    document.getElementById('overallProgressBar').style.width = `${progressPercentage}%`;
+    document.getElementById('progressPending').textContent = pending;
+    document.getElementById('progressInProgress').textContent = inProgress;
+    document.getElementById('progressCompleted').textContent = completed;
+
+    // 更新时间线
+    updateProjectTimeline(projectTasks);
+
+    // 更新里程碑
+    updateProjectMilestones(projectTasks);
+}
+
+// 更新整体进度（全部项目模式）
+function updateOverallProgress() {
+    // 计算所有任务的统计
+    const total = tasks.length;
+    const pending = tasks.filter(t => t.status === 'pending').length;
+    const inProgress = tasks.filter(t => t.status === 'in-progress').length;
+    const completed = tasks.filter(t => t.status === 'completed').length;
+
+    const progressPercentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    // 更新进度条和数字
+    document.getElementById('overallProgress').textContent = `${progressPercentage}%`;
+    document.getElementById('overallProgressBar').style.width = `${progressPercentage}%`;
+    document.getElementById('progressPending').textContent = pending;
+    document.getElementById('progressInProgress').textContent = inProgress;
+    document.getElementById('progressCompleted').textContent = completed;
+
+    // 更新时间线 - 显示所有任务
+    updateProjectTimeline(tasks);
+
+    // 更新里程碑 - 显示整体里程碑
+    updateOverallMilestones();
+}
+
+// 更新项目时间线
+function updateProjectTimeline(projectTasks) {
+    const container = document.getElementById('projectTimeline');
+    if (!container) return;
+
+    if (projectTasks.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-muted p-3">
+                <i class="bi bi-clock-history"></i>
+                <p class="mb-0">暂无任务时间线</p>
+            </div>
+        `;
+        return;
+    }
+
+    // 按创建时间排序
+    const sortedTasks = [...projectTasks].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+    let timelineHTML = '<div class="timeline">';
+    sortedTasks.forEach(task => {
+        const statusClass = task.status === 'completed' ? 'completed' :
+                           task.status === 'in-progress' ? 'in-progress' : 'pending';
+
+        timelineHTML += `
+            <div class="timeline-item ${statusClass}">
+                <div class="fw-bold">${escapeHtml(task.title)}</div>
+                <small class="text-muted">
+                    ${new Date(task.createdAt).toLocaleDateString()} - ${getStatusText(task.status)}
+                </small>
+            </div>
+        `;
+    });
+    timelineHTML += '</div>';
+
+    container.innerHTML = timelineHTML;
+}
+
+// 更新项目里程碑
+function updateProjectMilestones(projectTasks) {
+    const container = document.getElementById('milestonesContainer');
+    if (!container) return;
+
+    // 根据任务生成里程碑
+    const milestones = [];
+
+    // 项目开始
+    if (projectTasks.length > 0) {
+        const firstTask = projectTasks.reduce((earliest, task) =>
+            new Date(task.createdAt) < new Date(earliest.createdAt) ? task : earliest
+        );
+        milestones.push({
+            title: '项目启动',
+            date: firstTask.createdAt,
+            status: 'completed',
+            description: '项目正式开始'
+        });
+    }
+
+    // 高优先级任务完成
+    const highPriorityCompleted = projectTasks.filter(t => t.priority === 'high' && t.status === 'completed');
+    if (highPriorityCompleted.length > 0) {
+        milestones.push({
+            title: '关键任务完成',
+            date: new Date().toISOString(),
+            status: 'completed',
+            description: `已完成 ${highPriorityCompleted.length} 个高优先级任务`
+        });
+    }
+
+    // 项目完成度里程碑
+    const completedCount = projectTasks.filter(t => t.status === 'completed').length;
+    const totalCount = projectTasks.length;
+    const completionRate = totalCount > 0 ? (completedCount / totalCount) : 0;
+
+    if (completionRate >= 0.5) {
+        milestones.push({
+            title: '项目过半',
+            date: new Date().toISOString(),
+            status: completionRate >= 0.5 ? 'completed' : 'pending',
+            description: `项目完成度已达到 ${Math.round(completionRate * 100)}%`
+        });
+    }
+
+    if (completionRate === 1) {
+        milestones.push({
+            title: '项目完成',
+            date: new Date().toISOString(),
+            status: 'completed',
+            description: '所有任务已完成'
+        });
+    }
+
+    if (milestones.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-muted p-3">
+                <i class="bi bi-flag"></i>
+                <p class="mb-0">暂无里程碑</p>
+            </div>
+        `;
+        return;
+    }
+
+    let milestonesHTML = '';
+    milestones.forEach(milestone => {
+        milestonesHTML += `
+            <div class="milestone-item ${milestone.status}">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="mb-1">${escapeHtml(milestone.title)}</h6>
+                        <p class="mb-1">${escapeHtml(milestone.description)}</p>
+                        <small class="text-muted">${new Date(milestone.date).toLocaleDateString()}</small>
+                    </div>
+                    <i class="bi bi-flag-fill"></i>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = milestonesHTML;
+}
+
+// 更新整体里程碑（全部项目模式）
+function updateOverallMilestones() {
+    const container = document.getElementById('milestonesContainer');
+    if (!container) return;
+
+    const milestones = [];
+
+    // 系统启动里程碑
+    if (tasks.length > 0) {
+        const firstTask = tasks.reduce((earliest, task) =>
+            new Date(task.createdAt) < new Date(earliest.createdAt) ? task : earliest
+        );
+        milestones.push({
+            title: '系统启动',
+            date: firstTask.createdAt,
+            status: 'completed',
+            description: '任务管理系统开始使用'
+        });
+    }
+
+    // 项目数量里程碑
+    if (projects.length >= 3) {
+        milestones.push({
+            title: '项目扩展',
+            date: new Date().toISOString(),
+            status: 'completed',
+            description: `已创建 ${projects.length} 个项目`
+        });
+    }
+
+    // 任务完成里程碑
+    const completedTasks = tasks.filter(t => t.status === 'completed');
+    if (completedTasks.length >= 5) {
+        milestones.push({
+            title: '任务达成',
+            date: new Date().toISOString(),
+            status: 'completed',
+            description: `已完成 ${completedTasks.length} 个任务`
+        });
+    }
+
+    // 整体完成度里程碑
+    const totalTasks = tasks.length;
+    const completedCount = completedTasks.length;
+    const completionRate = totalTasks > 0 ? (completedCount / totalTasks) : 0;
+
+    if (completionRate >= 0.5) {
+        milestones.push({
+            title: '进度过半',
+            date: new Date().toISOString(),
+            status: 'completed',
+            description: `整体完成度已达到 ${Math.round(completionRate * 100)}%`
+        });
+    }
+
+    // 高效率里程碑
+    const highPriorityCompleted = tasks.filter(t => t.priority === 'high' && t.status === 'completed');
+    if (highPriorityCompleted.length >= 3) {
+        milestones.push({
+            title: '高效执行',
+            date: new Date().toISOString(),
+            status: 'completed',
+            description: `已完成 ${highPriorityCompleted.length} 个高优先级任务`
+        });
+    }
+
+    if (milestones.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-muted p-3">
+                <i class="bi bi-flag"></i>
+                <p class="mb-0">继续努力，即将达成第一个里程碑！</p>
+            </div>
+        `;
+        return;
+    }
+
+    let milestonesHTML = '';
+    milestones.forEach(milestone => {
+        milestonesHTML += `
+            <div class="milestone-item ${milestone.status}">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="mb-1">${escapeHtml(milestone.title)}</h6>
+                        <p class="mb-1">${escapeHtml(milestone.description)}</p>
+                        <small class="text-muted">${new Date(milestone.date).toLocaleDateString()}</small>
+                    </div>
+                    <i class="bi bi-flag-fill"></i>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = milestonesHTML;
+}
+
+// 流程图相关函数
+function addFlowchartNode() {
+    // 这里可以添加流程图节点的逻辑
+    alert('流程图节点功能开发中...');
+}
+
+function resetFlowchart() {
+    updateFlowchartTab();
+}
+
+function addMilestone() {
+    // 这里可以添加里程碑的逻辑
+    alert('添加里程碑功能开发中...');
 }
